@@ -1,0 +1,58 @@
+{
+    "db": {
+        "motos": [],
+        "ordenes": [],
+        "servicios": [
+            {
+                "id": 1,
+                "nombre": "Lavado Básico",
+                "precio": 15000,
+                "activo": true
+            },
+            {
+                "id": 2,
+                "nombre": "Lavado Premium",
+                "precio": 25000,
+                "activo": true
+            },
+            {
+                "id": 3,
+                "nombre": "Lavado Completo",
+                "precio": 35000,
+                "activo": true
+            }
+        ],
+        "usuarios": [
+            {
+                "id": 1,
+                "username": "admin",
+                "nombre": "Administrador",
+                "pin": "5678",
+                "rol": "admin",
+                "estado": "activo",
+                "fechaCreacion": "2024-01-01T00:00:00.000Z"
+            },
+            {
+                "id": 2,
+                "username": "lavador",
+                "nombre": "Lavador Principal",
+                "pin": "1234",
+                "rol": "lavador",
+                "estado": "activo",
+                "fechaCreacion": "2024-01-01T00:00:00.000Z"
+            },
+            {
+                "id": 3,
+                "username": "lavador2",
+                "nombre": "Lavador Secundario",
+                "pin": "1111",
+                "rol": "lavador",
+                "estado": "activo",
+                "fechaCreacion": "2024-01-01T00:00:00.000Z"
+            }
+        ],
+        "salarios": [],
+        "gastos": []
+    },
+    "ultimaActualizacion": "2024-01-01T00:00:00.000Z"
+}
