@@ -1445,14 +1445,13 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT - CON SINCRONIZACIÓN POR JSONBIN.IO -->
+    <!-- JAVASCRIPT - CORREGIDO -->
     <!-- ============================================================ -->
     <script>
         // ================================================================
         // 1. CONFIGURACIÓN - CON CREDENCIALES JSONBIN.IO
         // ================================================================
 
-        // ⚠️ TUS CREDENCIALES YA ESTÁN CONFIGURADAS
         const CONFIG_PREDETERMINADO = {
             binId: '6a7d2f2ef5f4af5e290efe7b',
             apiKey: '$2a$10$EwqgWWm6ZKs7KdaAILhAeOHYYISAFj/.cVw7v.IF8Gv79Yk8htYQe'
@@ -1625,9 +1624,10 @@
                 // Cargar datos desde localStorage
                 await cargarDatosLocales();
 
-                // Sincronizar con JSONBin
+                // Sincronizar con JSONBin (sin bloquear)
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                    await sincronizarConJSONBin();
+                    // No esperar a que termine para no bloquear la UI
+                    sincronizarConJSONBin();
                 }
 
                 // Renderizar según rol
@@ -1655,7 +1655,9 @@
                 }, 10000);
 
                 mostrarToast(`✅ Bienvenido ${usuario.nombre}`, 'success');
-                mostrarToast('☁️ Sincronización en la nube activada', 'info');
+                if (CONFIG.binId && CONFIG.apiKey) {
+                    mostrarToast('☁️ Sincronización en la nube activada', 'info');
+                }
 
             } catch (error) {
                 console.error('Error al iniciar app:', error);
@@ -1793,7 +1795,6 @@
             if (syncIndicator) syncIndicator.textContent = '⏳';
 
             try {
-                // Intentar leer datos de JSONBin
                 const readResponse = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
                     headers: {
                         'X-Master-Key': CONFIG.apiKey
@@ -1885,6 +1886,12 @@
         }
 
         async function guardarConfigSync(event) {
+            // Si se llama sin evento (desde iniciarApp), no hacer nada
+            if (!event || typeof event.preventDefault !== 'function') {
+                console.log('⚠️ guardarConfigSync llamado sin evento, ignorando');
+                return;
+            }
+
             event.preventDefault();
 
             const binId = document.getElementById('syncBinId').value.trim();
@@ -1944,13 +1951,20 @@
         }
 
         // ================================================================
-        // 10. FUNCIONES DE NEGOCIO
+        // 10. FUNCIONES DE NEGOCIO - CORREGIDAS
         // ================================================================
 
         async function guardarYSincronizar() {
+            // Guardar localmente
             guardarDatosLocales();
+
+            // Sincronizar en segundo plano
             if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                await sincronizarConJSONBin();
+                try {
+                    await sincronizarConJSONBin();
+                } catch (error) {
+                    console.error('Error al sincronizar:', error);
+                }
             }
         }
 
@@ -1992,7 +2006,7 @@
         }
 
         // ================================================================
-        // 12. LAVADOR - NUEVO INGRESO
+        // 12. LAVADOR - NUEVO INGRESO - CORREGIDO
         // ================================================================
 
         async function renderizarLavadorNuevoIngreso() {
@@ -2049,6 +2063,7 @@
 
         async function registrarIngreso(event) {
             event.preventDefault();
+
             const placa = document.getElementById('placa').value.toUpperCase().trim();
             const tipo = document.getElementById('tipo').value;
             const servicioId = parseInt(document.getElementById('servicio').value);
@@ -2065,9 +2080,9 @@
 
                 const moto = {
                     id: Date.now() + Math.random() * 1000,
-                    placa,
-                    tipo,
-                    observacion,
+                    placa: placa,
+                    tipo: tipo,
+                    observacion: observacion,
                     estado: 'Espera',
                     fechaIngreso: new Date().toISOString(),
                     sincronizado: false,
@@ -2075,27 +2090,35 @@
                     precioAplicado: servicio ? servicio.precio : 15000,
                     usuarioCreador: usuarioActual ? usuarioActual.id : null
                 };
-                db.motos.push(moto);
 
                 const orden = {
                     id: Date.now() + Math.random() * 2000,
                     motoId: moto.id,
-                    servicioId,
+                    servicioId: servicioId,
                     precioAplicado: servicio ? servicio.precio : 15000,
                     metodoPago: metodoPago,
                     fecha: new Date().toISOString(),
                     sincronizado: false,
                     usuarioCreador: usuarioActual ? usuarioActual.id : null
                 };
+
+                // Agregar a la base de datos
+                db.motos.push(moto);
                 db.ordenes.push(orden);
+
+                // Guardar localmente y sincronizar
+                await guardarYSincronizar();
 
                 mostrarMensaje(`✅ Moto ${placa} registrada exitosamente`, 'success');
                 document.getElementById('ingresoForm').reset();
 
-                await guardarYSincronizar();
+                // Actualizar tablero si está visible
+                if (document.getElementById('tableroLista')) {
+                    cargarTablero();
+                }
 
             } catch (error) {
-                console.error(error);
+                console.error('Error al registrar:', error);
                 mostrarMensaje('❌ Error al registrar la moto', 'error');
             }
         }
@@ -2105,8 +2128,10 @@
             if (!el) return;
             el.textContent = texto;
             el.className = 'mensaje ' + tipo;
-            setTimeout(() => { el.textContent = '';
-                el.className = 'mensaje'; }, 5000);
+            setTimeout(() => {
+                el.textContent = '';
+                el.className = 'mensaje';
+            }, 5000);
         }
 
         // ================================================================
@@ -2695,7 +2720,7 @@
         }
 
         // ================================================================
-        // 22. ADMIN - CONTABILIDAD
+        // 22. ADMIN - CONTABILIDAD (VERSIÓN SIMPLIFICADA)
         // ================================================================
 
         async function renderizarAdminContabilidad() {
@@ -2778,7 +2803,7 @@
         }
 
         // ================================================================
-        // 23. FUNCIONES CONTABILIDAD
+        // 23. FUNCIONES CONTABILIDAD (Simplificadas)
         // ================================================================
 
         function cambiarPestanaCont(pestana, btn) {
@@ -3691,8 +3716,9 @@
             if (event.target === modalSync) cerrarModalSyncConfig();
         });
 
-        console.log('🔐 AndyWash v7.0 - Sin Token - Sincronización con JSONBin.io');
+        console.log('🔐 AndyWash v7.0 - Corrección de errores');
         console.log('📡 Configuración:', CONFIG.binId ? '✅ Configurado' : '⚠️ No configurado');
+        console.log('📦 Datos en memoria:', db.motos.length, 'motos,', db.ordenes.length, 'órdenes');
     </script>
 
 </body>
