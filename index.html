@@ -1252,7 +1252,7 @@
         <nav class="navbar">
             <div class="nav-brand">
                 <span>🏍️</span>
-                <span>AndyWash</span>
+                <span id="appTitle">AndyWash</span>
                 <span id="userNameDisplay" style="font-size:0.75rem;color:var(--text-secondary);font-weight:400;"></span>
             </div>
             <div class="nav-actions">
@@ -1444,6 +1444,7 @@
 
         function mostrarToast(mensaje, tipo = 'info') {
             const toast = document.getElementById('toast');
+            if (!toast) return;
             toast.textContent = mensaje;
             toast.className = `toast ${tipo}`;
             toast.classList.remove('hidden');
@@ -1463,10 +1464,15 @@
         function seleccionarRol(rol) {
             rolActual = rol;
             localStorage.setItem('user_role', rol);
-            document.getElementById('roleDisplay').textContent = `Rol: ${rol.charAt(0).toUpperCase() + rol.slice(1)}`;
+            const roleDisplay = document.getElementById('roleDisplay');
+            if (roleDisplay) {
+                roleDisplay.textContent = `Rol: ${rol.charAt(0).toUpperCase() + rol.slice(1)}`;
+            }
             mostrarPantalla('loginScreen');
-            document.getElementById('loginPin').value = '';
-            document.getElementById('loginError').textContent = '';
+            const loginPin = document.getElementById('loginPin');
+            if (loginPin) loginPin.value = '';
+            const loginError = document.getElementById('loginError');
+            if (loginError) loginError.textContent = '';
         }
 
         function volverInicio() { mostrarPantalla('welcomeScreen'); }
@@ -1498,7 +1504,6 @@
             btn.disabled = true;
 
             try {
-                // Asegurar que los datos están cargados
                 await cargarDatos();
 
                 const usuario = db.usuarios.find(u =>
@@ -1514,12 +1519,17 @@
                     localStorage.setItem('user_name', usuario.nombre);
                     await iniciarApp(role, usuario);
                 } else {
-                    document.getElementById('loginError').textContent =
-                        '❌ PIN incorrecto o usuario inactivo. Intenta de nuevo.';
+                    const loginError = document.getElementById('loginError');
+                    if (loginError) {
+                        loginError.textContent = '❌ PIN incorrecto o usuario inactivo. Intenta de nuevo.';
+                    }
                 }
             } catch (error) {
                 console.error('Error en login:', error);
-                document.getElementById('loginError').textContent = '❌ Error al verificar usuario. Intenta de nuevo.';
+                const loginError = document.getElementById('loginError');
+                if (loginError) {
+                    loginError.textContent = '❌ Error al verificar usuario. Intenta de nuevo.';
+                }
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
@@ -1533,17 +1543,28 @@
         async function iniciarApp(rol, usuario) {
             try {
                 mostrarPantalla('appScreen');
-                document.getElementById('appTitle').textContent = rol === 'admin' ? '📊 AndyWash Admin' : '🧽 AndyWash Lavador';
-                document.getElementById('userNameDisplay').textContent = `👤 ${usuario.nombre}`;
+
+                // Actualizar elementos de la navbar
+                const appTitle = document.getElementById('appTitle');
+                if (appTitle) {
+                    appTitle.textContent = rol === 'admin' ? '📊 AndyWash Admin' : '🧽 AndyWash Lavador';
+                }
+
+                const userNameDisplay = document.getElementById('userNameDisplay');
+                if (userNameDisplay) {
+                    userNameDisplay.textContent = `👤 ${usuario.nombre}`;
+                }
 
                 // Mostrar loading
                 const mainContent = document.getElementById('mainContent');
-                mainContent.innerHTML = `
+                if (mainContent) {
+                    mainContent.innerHTML = `
                     <div class="loading-spinner">
                         <div class="spinner"></div>
                         <p>Cargando aplicación para ${usuario.nombre}...</p>
                     </div>
                 `;
+                }
 
                 verificarEstadoConexion();
 
@@ -1660,7 +1681,6 @@
                 gastos: []
             };
             console.log('📦 Datos por defecto inicializados');
-            // Intentar guardar en GitHub
             guardarDatos();
         }
 
@@ -1748,7 +1768,6 @@
             try {
                 await cargarDatos();
                 await guardarDatos();
-                // Actualizar UI si está visible
                 if (appInicializada) {
                     actualizarUI();
                 }
@@ -1780,6 +1799,7 @@
 
         function renderizarSidebarLavador() {
             const container = document.getElementById('sidebarContainer');
+            if (!container) return;
             container.innerHTML = `
                 <button class="sidebar-btn active" onclick="cambiarSeccionLavador('nuevo-ingreso')">
                     <span class="icon">📝</span> Nuevo Ingreso
@@ -1798,7 +1818,8 @@
 
         function cambiarSeccionLavador(seccion) {
             document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.sidebar-btn[onclick*="${seccion}"]`)?.classList.add('active');
+            const btn = document.querySelector(`.sidebar-btn[onclick*="${seccion}"]`);
+            if (btn) btn.classList.add('active');
 
             const funciones = {
                 'nuevo-ingreso': renderizarLavadorNuevoIngreso,
@@ -1815,6 +1836,8 @@
 
         async function renderizarLavadorNuevoIngreso() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
+
             const servicios = db.servicios ? db.servicios.filter(s => s.activo) : [];
 
             main.innerHTML = `
@@ -1931,6 +1954,7 @@
 
         async function renderizarLavadorTablero() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>📋 Tablero de Estados</h2>
@@ -2027,7 +2051,9 @@
         function filtrarEstados(estado) {
             filtroActual = estado;
             document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
             cargarTablero();
         }
 
@@ -2106,14 +2132,18 @@
         // ================================================================
 
         function abrirModalConfirmacion(titulo, mensaje, accion) {
-            document.getElementById('confirmacionTitulo').textContent = titulo;
-            document.getElementById('confirmacionMensaje').textContent = mensaje;
-            document.getElementById('modalConfirmacion').classList.remove('hidden');
+            const tituloEl = document.getElementById('confirmacionTitulo');
+            const mensajeEl = document.getElementById('confirmacionMensaje');
+            if (tituloEl) tituloEl.textContent = titulo;
+            if (mensajeEl) mensajeEl.textContent = mensaje;
+            const modal = document.getElementById('modalConfirmacion');
+            if (modal) modal.classList.remove('hidden');
             accionConfirmacion = accion;
         }
 
         function cerrarModalConfirmacion() {
-            document.getElementById('modalConfirmacion').classList.add('hidden');
+            const modal = document.getElementById('modalConfirmacion');
+            if (modal) modal.classList.add('hidden');
             accionConfirmacion = null;
         }
 
@@ -2136,16 +2166,22 @@
             const orden = db.ordenes.find(o => o.motoId == motoId);
             const precio = orden?.precioAplicado || moto.precioAplicado || 0;
 
-            document.getElementById('modalPlaca').textContent = moto.placa;
-            document.getElementById('modalTipo').textContent = moto.tipo;
-            document.getElementById('modalPrecio').innerHTML =
-                `Total: <strong>$${precio.toLocaleString()}</strong>`;
+            const placaEl = document.getElementById('modalPlaca');
+            const tipoEl = document.getElementById('modalTipo');
+            const precioEl = document.getElementById('modalPrecio');
+            if (placaEl) placaEl.textContent = moto.placa;
+            if (tipoEl) tipoEl.textContent = moto.tipo;
+            if (precioEl) precioEl.innerHTML = `Total: <strong>$${precio.toLocaleString()}</strong>`;
 
             document.querySelectorAll('.pago-options button').forEach(b => b.classList.remove('selected'));
-            document.getElementById('btnEfectivo').classList.add('selected');
-            document.getElementById('modalError').textContent = '';
+            const btnEfectivo = document.getElementById('btnEfectivo');
+            if (btnEfectivo) btnEfectivo.classList.add('selected');
 
-            document.getElementById('modalPago').classList.remove('hidden');
+            const errorEl = document.getElementById('modalError');
+            if (errorEl) errorEl.textContent = '';
+
+            const modal = document.getElementById('modalPago');
+            if (modal) modal.classList.remove('hidden');
         }
 
         function seleccionarMetodoPago(metodo) {
@@ -2153,17 +2189,20 @@
             document.querySelectorAll('.pago-options button').forEach(b => b.classList.remove('selected'));
             const btn = document.getElementById(`btn${metodo}`);
             if (btn) btn.classList.add('selected');
-            document.getElementById('modalError').textContent = '';
+            const errorEl = document.getElementById('modalError');
+            if (errorEl) errorEl.textContent = '';
         }
 
         function cerrarModalPago() {
-            document.getElementById('modalPago').classList.add('hidden');
+            const modal = document.getElementById('modalPago');
+            if (modal) modal.classList.add('hidden');
             motoParaEntregar = null;
         }
 
         async function confirmarEntrega() {
             if (!motoParaEntregar) {
-                document.getElementById('modalError').textContent = '❌ Error: No hay moto seleccionada';
+                const errorEl = document.getElementById('modalError');
+                if (errorEl) errorEl.textContent = '❌ Error: No hay moto seleccionada';
                 return;
             }
 
@@ -2171,7 +2210,8 @@
                 const motoId = motoParaEntregar.id;
                 const moto = db.motos.find(m => m.id == motoId);
                 if (!moto) {
-                    document.getElementById('modalError').textContent = '❌ Moto no encontrada';
+                    const errorEl = document.getElementById('modalError');
+                    if (errorEl) errorEl.textContent = '❌ Moto no encontrada';
                     return;
                 }
 
@@ -2196,7 +2236,8 @@
 
             } catch (error) {
                 console.error('Error al confirmar entrega:', error);
-                document.getElementById('modalError').textContent = '❌ Error al procesar la entrega';
+                const errorEl = document.getElementById('modalError');
+                if (errorEl) errorEl.textContent = '❌ Error al procesar la entrega';
             }
         }
 
@@ -2245,6 +2286,7 @@
 
         async function renderizarLavadorMisMotos() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>🏍️ Mis Motos Hoy</h2>
@@ -2282,12 +2324,19 @@
                     .filter(o => o.metodoPago !== 'Pendiente')
                     .reduce((sum, o) => sum + (o.precioAplicado || 0), 0);
 
-                document.getElementById('totalHoy').textContent = total;
-                document.getElementById('terminadasHoy').textContent = terminadas;
-                document.getElementById('entregadasHoy').textContent = entregadas;
-                document.getElementById('recaudadoHoy').textContent = `$${recaudado.toLocaleString()}`;
+                const totalEl = document.getElementById('totalHoy');
+                const terminadasEl = document.getElementById('terminadasHoy');
+                const entregadasEl = document.getElementById('entregadasHoy');
+                const recaudadoEl = document.getElementById('recaudadoHoy');
+
+                if (totalEl) totalEl.textContent = total;
+                if (terminadasEl) terminadasEl.textContent = terminadas;
+                if (entregadasEl) entregadasEl.textContent = entregadas;
+                if (recaudadoEl) recaudadoEl.textContent = `$${recaudado.toLocaleString()}`;
 
                 const container = document.getElementById('motosHoyLista');
+                if (!container) return;
+
                 if (motos.length === 0) {
                     container.innerHTML =
                     `<div class="empty-state"><span>📭</span><p>No hay motos registradas hoy</p></div>`;
@@ -2326,6 +2375,7 @@
 
         function renderizarLavadorSync() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>🔄 Sincronización</h2>
@@ -2354,6 +2404,7 @@
 
         function renderizarSidebarAdmin() {
             const container = document.getElementById('sidebarContainer');
+            if (!container) return;
             container.innerHTML = `
                 <button class="sidebar-btn active" onclick="cambiarSeccionAdmin('dashboard')">
                     <span class="icon">📊</span> Dashboard
@@ -2378,7 +2429,8 @@
 
         function cambiarSeccionAdmin(seccion) {
             document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.sidebar-btn[onclick*="${seccion}"]`)?.classList.add('active');
+            const btn = document.querySelector(`.sidebar-btn[onclick*="${seccion}"]`);
+            if (btn) btn.classList.add('active');
 
             const funciones = {
                 'dashboard': renderizarAdminDashboard,
@@ -2397,6 +2449,7 @@
 
         async function renderizarAdminDashboard() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
 
             const hoy = new Date();
             const hoyStr = hoy.toISOString().split('T')[0];
@@ -2453,6 +2506,7 @@
 
         async function renderizarAdminContabilidad() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
 
             const hoy = new Date();
             const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -2537,9 +2591,13 @@
             document.querySelectorAll('#contDetalle .filtro-btn').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
 
-            document.getElementById('contVentas').style.display = pestana === 'ventas' ? 'block' : 'none';
-            document.getElementById('contSalarios').style.display = pestana === 'salarios' ? 'block' : 'none';
-            document.getElementById('contGastos').style.display = pestana === 'gastos' ? 'block' : 'none';
+            const ventas = document.getElementById('contVentas');
+            const salarios = document.getElementById('contSalarios');
+            const gastos = document.getElementById('contGastos');
+
+            if (ventas) ventas.style.display = pestana === 'ventas' ? 'block' : 'none';
+            if (salarios) salarios.style.display = pestana === 'salarios' ? 'block' : 'none';
+            if (gastos) gastos.style.display = pestana === 'gastos' ? 'block' : 'none';
         }
 
         async function actualizarContabilidad() {
@@ -2567,42 +2625,55 @@
 
             const gananciaNeta = totalVentas - totalSalarios - totalGastos;
 
-            document.getElementById('contTotalVentas').textContent = `$${totalVentas.toLocaleString()}`;
-            document.getElementById('contGananciaNeta').textContent = `$${gananciaNeta.toLocaleString()}`;
-            document.getElementById('contTotalGastos').textContent = `$${totalGastos.toLocaleString()}`;
-            document.getElementById('contTotalSalarios').textContent = `$${totalSalarios.toLocaleString()}`;
-            document.getElementById('contTotalMotos').textContent = totalMotos;
-            document.getElementById('contPromedioMoto').textContent = totalMotos > 0 ? `$${(totalVentas / totalMotos).toFixed(0)}` :
-                '$0';
+            const totalVentasEl = document.getElementById('contTotalVentas');
+            const gananciaEl = document.getElementById('contGananciaNeta');
+            const gastosEl = document.getElementById('contTotalGastos');
+            const salariosEl = document.getElementById('contTotalSalarios');
+            const motosEl = document.getElementById('contTotalMotos');
+            const promedioEl = document.getElementById('contPromedioMoto');
+
+            if (totalVentasEl) totalVentasEl.textContent = `$${totalVentas.toLocaleString()}`;
+            if (gananciaEl) gananciaEl.textContent = `$${gananciaNeta.toLocaleString()}`;
+            if (gastosEl) gastosEl.textContent = `$${totalGastos.toLocaleString()}`;
+            if (salariosEl) salariosEl.textContent = `$${totalSalarios.toLocaleString()}`;
+            if (motosEl) motosEl.textContent = totalMotos;
+            if (promedioEl) promedioEl.textContent = totalMotos > 0 ? `$${(totalVentas / totalMotos).toFixed(0)}` : '$0';
 
             // Ventas
             const tbodyVentas = document.getElementById('contVentasBody');
-            if (ordenes.length === 0) {
-                tbodyVentas.innerHTML = `<tr><td colspan="7" style="text-align:center;">No hay ventas en este periodo</td></tr>`;
-            } else {
-                tbodyVentas.innerHTML = ordenes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).map(o => {
-                    const moto = db.motos.find(m => m.id === o.motoId);
-                    const servicio = db.servicios.find(s => s.id === o.servicioId);
-                    const usuario = db.usuarios.find(u => u.id === o.usuarioCreador);
-                    return `
-                        <tr>
-                            <td>#${o.id}</td>
-                            <td>${moto?.placa || 'N/A'}</td>
-                            <td>${servicio?.nombre || 'N/A'}</td>
-                            <td><span class="badge info">${o.metodoPago}</span></td>
-                            <td><strong>$${(o.precioAplicado || 0).toLocaleString()}</strong></td>
-                            <td>${new Date(o.fecha).toLocaleDateString()}</td>
-                            <td>${usuario?.nombre || 'N/A'}</td>
-                        </tr>
-                    `;
-                }).join('');
+            if (tbodyVentas) {
+                if (ordenes.length === 0) {
+                    tbodyVentas.innerHTML =
+                        `<tr><td colspan="7" style="text-align:center;">No hay ventas en este periodo</td></tr>`;
+                } else {
+                    tbodyVentas.innerHTML = ordenes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).map(o => {
+                        const moto = db.motos.find(m => m.id === o.motoId);
+                        const servicio = db.servicios.find(s => s.id === o.servicioId);
+                        const usuario = db.usuarios.find(u => u.id === o.usuarioCreador);
+                        return `
+                            <tr>
+                                <td>#${o.id}</td>
+                                <td>${moto?.placa || 'N/A'}</td>
+                                <td>${servicio?.nombre || 'N/A'}</td>
+                                <td><span class="badge info">${o.metodoPago}</span></td>
+                                <td><strong>$${(o.precioAplicado || 0).toLocaleString()}</strong></td>
+                                <td>${new Date(o.fecha).toLocaleDateString()}</td>
+                                <td>${usuario?.nombre || 'N/A'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
             }
-            document.getElementById('contVentasFooter').innerHTML = `
-                <tr style="font-weight:700;background:#f8fafc;">
-                    <td colspan="4" style="text-align:right;">TOTAL:</td>
-                    <td colspan="3">$${totalVentas.toLocaleString()}</td>
-                </tr>
-            `;
+
+            const footerVentas = document.getElementById('contVentasFooter');
+            if (footerVentas) {
+                footerVentas.innerHTML = `
+                    <tr style="font-weight:700;background:#f8fafc;">
+                        <td colspan="4" style="text-align:right;">TOTAL:</td>
+                        <td colspan="3">$${totalVentas.toLocaleString()}</td>
+                    </tr>
+                `;
+            }
 
             // Salarios
             const salariosFiltrados = db.salarios.filter(s => {
@@ -2611,31 +2682,37 @@
             }).sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
 
             const tbodySalarios = document.getElementById('contSalariosBody');
-            if (salariosFiltrados.length === 0) {
-                tbodySalarios.innerHTML =
-                    `<tr><td colspan="7" style="text-align:center;">No hay salarios pagados en este periodo</td></tr>`;
-            } else {
-                tbodySalarios.innerHTML = salariosFiltrados.map(s => {
-                    const usuario = db.usuarios.find(u => u.id === s.usuarioId);
-                    return `
-                        <tr>
-                            <td>${usuario?.nombre || 'N/A'}</td>
-                            <td><span class="badge info">${s.periodo}</span></td>
-                            <td>$${(s.montoBase || 0).toLocaleString()}</td>
-                            <td>$${(s.comisiones || 0).toLocaleString()}</td>
-                            <td>$${(s.deducciones || 0).toLocaleString()}</td>
-                            <td><strong>$${(s.montoTotal || 0).toLocaleString()}</strong></td>
-                            <td>${new Date(s.fechaPago).toLocaleDateString()}</td>
-                        </tr>
-                    `;
-                }).join('');
+            if (tbodySalarios) {
+                if (salariosFiltrados.length === 0) {
+                    tbodySalarios.innerHTML =
+                        `<tr><td colspan="7" style="text-align:center;">No hay salarios pagados en este periodo</td></tr>`;
+                } else {
+                    tbodySalarios.innerHTML = salariosFiltrados.map(s => {
+                        const usuario = db.usuarios.find(u => u.id === s.usuarioId);
+                        return `
+                            <tr>
+                                <td>${usuario?.nombre || 'N/A'}</td>
+                                <td><span class="badge info">${s.periodo}</span></td>
+                                <td>$${(s.montoBase || 0).toLocaleString()}</td>
+                                <td>$${(s.comisiones || 0).toLocaleString()}</td>
+                                <td>$${(s.deducciones || 0).toLocaleString()}</td>
+                                <td><strong>$${(s.montoTotal || 0).toLocaleString()}</strong></td>
+                                <td>${new Date(s.fechaPago).toLocaleDateString()}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
             }
-            document.getElementById('contSalariosFooter').innerHTML = `
-                <tr style="font-weight:700;background:#f8fafc;">
-                    <td colspan="5" style="text-align:right;">TOTAL:</td>
-                    <td colspan="2">$${totalSalarios.toLocaleString()}</td>
-                </tr>
-            `;
+
+            const footerSalarios = document.getElementById('contSalariosFooter');
+            if (footerSalarios) {
+                footerSalarios.innerHTML = `
+                    <tr style="font-weight:700;background:#f8fafc;">
+                        <td colspan="5" style="text-align:right;">TOTAL:</td>
+                        <td colspan="2">$${totalSalarios.toLocaleString()}</td>
+                    </tr>
+                `;
+            }
 
             // Gastos
             const gastosFiltrados = db.gastos.filter(g => {
@@ -2644,26 +2721,32 @@
             }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
             const tbodyGastos = document.getElementById('contGastosBody');
-            if (gastosFiltrados.length === 0) {
-                tbodyGastos.innerHTML =
-                    `<tr><td colspan="5" style="text-align:center;">No hay gastos registrados en este periodo</td></tr>`;
-            } else {
-                tbodyGastos.innerHTML = gastosFiltrados.map(g => `
-                    <tr>
-                        <td><strong>${g.concepto}</strong></td>
-                        <td><span class="badge warning">${g.categoria}</span></td>
-                        <td>$${(g.monto || 0).toLocaleString()}</td>
-                        <td>${new Date(g.fecha).toLocaleDateString()}</td>
-                        <td>${g.notas || ''}</td>
-                    </tr>
-                `).join('');
+            if (tbodyGastos) {
+                if (gastosFiltrados.length === 0) {
+                    tbodyGastos.innerHTML =
+                        `<tr><td colspan="5" style="text-align:center;">No hay gastos registrados en este periodo</td></tr>`;
+                } else {
+                    tbodyGastos.innerHTML = gastosFiltrados.map(g => `
+                        <tr>
+                            <td><strong>${g.concepto}</strong></td>
+                            <td><span class="badge warning">${g.categoria}</span></td>
+                            <td>$${(g.monto || 0).toLocaleString()}</td>
+                            <td>${new Date(g.fecha).toLocaleDateString()}</td>
+                            <td>${g.notas || ''}</td>
+                        </tr>
+                    `).join('');
+                }
             }
-            document.getElementById('contGastosFooter').innerHTML = `
-                <tr style="font-weight:700;background:#f8fafc;">
-                    <td colspan="2" style="text-align:right;">TOTAL:</td>
-                    <td colspan="3">$${totalGastos.toLocaleString()}</td>
-                </tr>
-            `;
+
+            const footerGastos = document.getElementById('contGastosFooter');
+            if (footerGastos) {
+                footerGastos.innerHTML = `
+                    <tr style="font-weight:700;background:#f8fafc;">
+                        <td colspan="2" style="text-align:right;">TOTAL:</td>
+                        <td colspan="3">$${totalGastos.toLocaleString()}</td>
+                    </tr>
+                `;
+            }
         }
 
         // ================================================================
@@ -2671,30 +2754,45 @@
         // ================================================================
 
         async function abrirModalSalario(usuarioId = null) {
-            document.getElementById('modalSalario').classList.remove('hidden');
-            document.getElementById('salarioMensaje').style.display = 'none';
+            const modal = document.getElementById('modalSalario');
+            if (modal) modal.classList.remove('hidden');
+
+            const msgEl = document.getElementById('salarioMensaje');
+            if (msgEl) msgEl.style.display = 'none';
 
             const usuarios = db.usuarios.filter(u => u.rol === 'lavador' && u.estado === 'activo');
             const select = document.getElementById('salarioLavador');
-            select.innerHTML = usuarios.map(u =>
-                `<option value="${u.id}" ${u.id === usuarioId ? 'selected' : ''}>${u.nombre}</option>`
-            ).join('');
+            if (select) {
+                select.innerHTML = usuarios.map(u =>
+                    `<option value="${u.id}" ${u.id === usuarioId ? 'selected' : ''}>${u.nombre}</option>`
+                ).join('');
+            }
 
             if (usuarioId) {
                 const salarios = db.salarios.filter(s => s.usuarioId === usuarioId);
                 const ultimo = salarios.sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))[0];
-                if (ultimo) document.getElementById('salarioMonto').value = ultimo.montoBase || '';
+                if (ultimo) {
+                    const montoEl = document.getElementById('salarioMonto');
+                    if (montoEl) montoEl.value = ultimo.montoBase || '';
+                }
             }
 
-            document.getElementById('salarioId').value = '';
-            document.getElementById('salarioMonto').value = '';
-            document.getElementById('salarioComisiones').value = '0';
-            document.getElementById('salarioDeducciones').value = '0';
-            document.getElementById('salarioNotas').value = '';
+            const idEl = document.getElementById('salarioId');
+            const montoEl = document.getElementById('salarioMonto');
+            const comisionesEl = document.getElementById('salarioComisiones');
+            const deduccionesEl = document.getElementById('salarioDeducciones');
+            const notasEl = document.getElementById('salarioNotas');
+
+            if (idEl) idEl.value = '';
+            if (montoEl) montoEl.value = '';
+            if (comisionesEl) comisionesEl.value = '0';
+            if (deduccionesEl) deduccionesEl.value = '0';
+            if (notasEl) notasEl.value = '';
         }
 
         function cerrarModalSalario() {
-            document.getElementById('modalSalario').classList.add('hidden');
+            const modal = document.getElementById('modalSalario');
+            if (modal) modal.classList.add('hidden');
         }
 
         async function pagarSalario(event) {
@@ -2710,9 +2808,11 @@
             const msgEl = document.getElementById('salarioMensaje');
 
             if (!usuarioId || montoBase <= 0) {
-                msgEl.textContent = '❌ Selecciona un lavador y un monto válido';
-                msgEl.className = 'mensaje error';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = '❌ Selecciona un lavador y un monto válido';
+                    msgEl.className = 'mensaje error';
+                    msgEl.style.display = 'block';
+                }
                 return;
             }
 
@@ -2731,9 +2831,11 @@
 
                 db.salarios.push(salario);
 
-                msgEl.textContent = `✅ Salario pagado exitosamente: $${salario.montoTotal.toLocaleString()}`;
-                msgEl.className = 'mensaje success';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = `✅ Salario pagado exitosamente: $${salario.montoTotal.toLocaleString()}`;
+                    msgEl.className = 'mensaje success';
+                    msgEl.style.display = 'block';
+                }
 
                 await guardarDatos();
 
@@ -2744,9 +2846,11 @@
 
             } catch (error) {
                 console.error('Error al pagar salario:', error);
-                msgEl.textContent = '❌ Error al pagar salario';
-                msgEl.className = 'mensaje error';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = '❌ Error al pagar salario';
+                    msgEl.className = 'mensaje error';
+                    msgEl.style.display = 'block';
+                }
             }
         }
 
@@ -2799,6 +2903,7 @@
 
         async function renderizarAdminCaja() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>💰 Módulo de Caja - AndyWash</h2>
@@ -2843,36 +2948,47 @@
             const msgEl = document.getElementById('pagoMensajeAdmin');
 
             if (!ordenId || isNaN(ordenId)) {
-                msgEl.textContent = '❌ Ingresa un ID de orden válido';
-                msgEl.className = 'mensaje error';
+                if (msgEl) {
+                    msgEl.textContent = '❌ Ingresa un ID de orden válido';
+                    msgEl.className = 'mensaje error';
+                }
                 return;
             }
 
             try {
                 const orden = db.ordenes.find(o => o.id === ordenId);
                 if (!orden) {
-                    msgEl.textContent = '❌ Orden no encontrada';
-                    msgEl.className = 'mensaje error';
+                    if (msgEl) {
+                        msgEl.textContent = '❌ Orden no encontrada';
+                        msgEl.className = 'mensaje error';
+                    }
                     return;
                 }
                 if (orden.metodoPago !== 'Pendiente') {
-                    msgEl.textContent = '⚠️ Esta orden ya tiene un pago registrado';
-                    msgEl.className = 'mensaje error';
+                    if (msgEl) {
+                        msgEl.textContent = '⚠️ Esta orden ya tiene un pago registrado';
+                        msgEl.className = 'mensaje error';
+                    }
                     return;
                 }
 
                 orden.metodoPago = metodoPago;
                 await guardarDatos();
 
-                msgEl.textContent = `✅ Pago registrado: ${metodoPago} - $${orden.precioAplicado?.toLocaleString() || '0'}`;
-                msgEl.className = 'mensaje success';
+                if (msgEl) {
+                    msgEl.textContent =
+                    `✅ Pago registrado: ${metodoPago} - $${orden.precioAplicado?.toLocaleString() || '0'}`;
+                    msgEl.className = 'mensaje success';
+                }
                 document.getElementById('pagoForm').reset();
                 await cargarResumenCajaAdmin();
 
             } catch (error) {
                 console.error(error);
-                msgEl.textContent = '❌ Error al registrar pago';
-                msgEl.className = 'mensaje error';
+                if (msgEl) {
+                    msgEl.textContent = '❌ Error al registrar pago';
+                    msgEl.className = 'mensaje error';
+                }
             }
         }
 
@@ -2895,13 +3011,15 @@
                 const totalNequi = nequi.reduce((s, o) => s + (o.precioAplicado || 0), 0);
 
                 const container = document.getElementById('cajaResumenAdmin');
-                container.innerHTML = `
-                    <div class="resumen-item"><span>📝 Pendientes:</span><span class="badge">${pendientes.length}</span></div>
-                    <div class="resumen-item"><span>💵 Efectivo:</span><span>$${totalEfectivo.toLocaleString()}</span></div>
-                    <div class="resumen-item"><span>🏦 Transferencia:</span><span>$${totalTransferencia.toLocaleString()}</span></div>
-                    <div class="resumen-item"><span>📱 Nequi:</span><span>$${totalNequi.toLocaleString()}</span></div>
-                    <div class="resumen-item total"><span>📊 Total Recaudado:</span><span>$${(totalEfectivo + totalTransferencia + totalNequi).toLocaleString()}</span></div>
-                `;
+                if (container) {
+                    container.innerHTML = `
+                        <div class="resumen-item"><span>📝 Pendientes:</span><span class="badge">${pendientes.length}</span></div>
+                        <div class="resumen-item"><span>💵 Efectivo:</span><span>$${totalEfectivo.toLocaleString()}</span></div>
+                        <div class="resumen-item"><span>🏦 Transferencia:</span><span>$${totalTransferencia.toLocaleString()}</span></div>
+                        <div class="resumen-item"><span>📱 Nequi:</span><span>$${totalNequi.toLocaleString()}</span></div>
+                        <div class="resumen-item total"><span>📊 Total Recaudado:</span><span>$${(totalEfectivo + totalTransferencia + totalNequi).toLocaleString()}</span></div>
+                    `;
+                }
 
             } catch (error) {
                 console.error('Error al cargar resumen:', error);
@@ -2968,6 +3086,7 @@
 
         async function renderizarAdminServicios() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>⚙️ Configurar Servicios - AndyWash</h2>
@@ -3087,6 +3206,7 @@
 
         async function renderizarAdminUsuarios() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>👤 Administración de Usuarios - AndyWash</h2>
@@ -3141,31 +3261,43 @@
         // ================================================================
 
         function abrirModalUsuario(usuario = null) {
-            document.getElementById('modalUsuario').classList.remove('hidden');
+            const modal = document.getElementById('modalUsuario');
+            if (modal) modal.classList.remove('hidden');
+
+            const title = document.getElementById('modalUsuarioTitle');
+            const idEl = document.getElementById('usuarioId');
+            const nombreEl = document.getElementById('usuarioNombre');
+            const nombreCompletoEl = document.getElementById('usuarioNombreCompleto');
+            const pinEl = document.getElementById('usuarioPin');
+            const rolEl = document.getElementById('usuarioRol');
+            const estadoEl = document.getElementById('usuarioEstado');
 
             if (usuario) {
-                document.getElementById('modalUsuarioTitle').textContent = '✏️ Editar Usuario';
-                document.getElementById('usuarioId').value = usuario.id;
-                document.getElementById('usuarioNombre').value = usuario.username;
-                document.getElementById('usuarioNombreCompleto').value = usuario.nombre;
-                document.getElementById('usuarioPin').value = usuario.pin;
-                document.getElementById('usuarioRol').value = usuario.rol;
-                document.getElementById('usuarioEstado').value = usuario.estado;
-                document.getElementById('usuarioNombre').disabled = true;
+                if (title) title.textContent = '✏️ Editar Usuario';
+                if (idEl) idEl.value = usuario.id;
+                if (nombreEl) nombreEl.value = usuario.username;
+                if (nombreCompletoEl) nombreCompletoEl.value = usuario.nombre;
+                if (pinEl) pinEl.value = usuario.pin;
+                if (rolEl) rolEl.value = usuario.rol;
+                if (estadoEl) estadoEl.value = usuario.estado;
+                if (nombreEl) nombreEl.disabled = true;
             } else {
-                document.getElementById('modalUsuarioTitle').textContent = '👤 Crear Usuario';
-                document.getElementById('usuarioId').value = '';
-                document.getElementById('usuarioForm').reset();
-                document.getElementById('usuarioNombre').disabled = false;
-                document.getElementById('usuarioRol').value = 'lavador';
-                document.getElementById('usuarioEstado').value = 'activo';
+                if (title) title.textContent = '👤 Crear Usuario';
+                if (idEl) idEl.value = '';
+                const form = document.getElementById('usuarioForm');
+                if (form) form.reset();
+                if (nombreEl) nombreEl.disabled = false;
+                if (rolEl) rolEl.value = 'lavador';
+                if (estadoEl) estadoEl.value = 'activo';
             }
 
-            document.getElementById('usuarioMensaje').style.display = 'none';
+            const msgEl = document.getElementById('usuarioMensaje');
+            if (msgEl) msgEl.style.display = 'none';
         }
 
         function cerrarModalUsuario() {
-            document.getElementById('modalUsuario').classList.add('hidden');
+            const modal = document.getElementById('modalUsuario');
+            if (modal) modal.classList.add('hidden');
         }
 
         async function guardarUsuario(event) {
@@ -3181,23 +3313,29 @@
             const msgEl = document.getElementById('usuarioMensaje');
 
             if (!username || username.length < 3) {
-                msgEl.textContent = '❌ El nombre de usuario debe tener al menos 3 caracteres';
-                msgEl.className = 'mensaje error';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = '❌ El nombre de usuario debe tener al menos 3 caracteres';
+                    msgEl.className = 'mensaje error';
+                    msgEl.style.display = 'block';
+                }
                 return;
             }
 
             if (!nombre || nombre.length < 3) {
-                msgEl.textContent = '❌ El nombre completo debe tener al menos 3 caracteres';
-                msgEl.className = 'mensaje error';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = '❌ El nombre completo debe tener al menos 3 caracteres';
+                    msgEl.className = 'mensaje error';
+                    msgEl.style.display = 'block';
+                }
                 return;
             }
 
             if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-                msgEl.textContent = '❌ El PIN debe ser un número de 4 dígitos';
-                msgEl.className = 'mensaje error';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = '❌ El PIN debe ser un número de 4 dígitos';
+                    msgEl.className = 'mensaje error';
+                    msgEl.style.display = 'block';
+                }
                 return;
             }
 
@@ -3208,18 +3346,22 @@
                 );
 
                 if (existe) {
-                    msgEl.textContent = '❌ El nombre de usuario ya existe';
-                    msgEl.className = 'mensaje error';
-                    msgEl.style.display = 'block';
+                    if (msgEl) {
+                        msgEl.textContent = '❌ El nombre de usuario ya existe';
+                        msgEl.className = 'mensaje error';
+                        msgEl.style.display = 'block';
+                    }
                     return;
                 }
 
                 if (id) {
                     const usuario = db.usuarios.find(u => u.id == id);
                     if (!usuario) {
-                        msgEl.textContent = '❌ Usuario no encontrado';
-                        msgEl.className = 'mensaje error';
-                        msgEl.style.display = 'block';
+                        if (msgEl) {
+                            msgEl.textContent = '❌ Usuario no encontrado';
+                            msgEl.className = 'mensaje error';
+                            msgEl.style.display = 'block';
+                        }
                         return;
                     }
 
@@ -3228,9 +3370,11 @@
                     usuario.rol = rol;
                     usuario.estado = estado;
 
-                    msgEl.textContent = `✅ Usuario ${username} actualizado exitosamente`;
-                    msgEl.className = 'mensaje success';
-                    msgEl.style.display = 'block';
+                    if (msgEl) {
+                        msgEl.textContent = `✅ Usuario ${username} actualizado exitosamente`;
+                        msgEl.className = 'mensaje success';
+                        msgEl.style.display = 'block';
+                    }
 
                 } else {
                     const nuevoUsuario = {
@@ -3245,9 +3389,11 @@
 
                     db.usuarios.push(nuevoUsuario);
 
-                    msgEl.textContent = `✅ Usuario ${username} creado exitosamente`;
-                    msgEl.className = 'mensaje success';
-                    msgEl.style.display = 'block';
+                    if (msgEl) {
+                        msgEl.textContent = `✅ Usuario ${username} creado exitosamente`;
+                        msgEl.className = 'mensaje success';
+                        msgEl.style.display = 'block';
+                    }
                 }
 
                 await guardarDatos();
@@ -3259,9 +3405,11 @@
 
             } catch (error) {
                 console.error('Error al guardar usuario:', error);
-                msgEl.textContent = '❌ Error al guardar el usuario';
-                msgEl.className = 'mensaje error';
-                msgEl.style.display = 'block';
+                if (msgEl) {
+                    msgEl.textContent = '❌ Error al guardar el usuario';
+                    msgEl.className = 'mensaje error';
+                    msgEl.style.display = 'block';
+                }
             }
         }
 
@@ -3312,6 +3460,7 @@
 
         function renderizarAdminSyncMonitor() {
             const main = document.getElementById('mainContent');
+            if (!main) return;
             main.innerHTML = `
                 <section class="section active">
                     <h2>📡 Monitor de Sincronización - AndyWash</h2>
@@ -3349,7 +3498,6 @@
             const userId = localStorage.getItem('user_id');
 
             if (session === 'true' && userId) {
-                // Intentar restaurar sesión
                 cargarDatos().then(() => {
                     const usuario = db.usuarios.find(u => u.id == userId);
                     if (usuario && usuario.estado === 'activo') {
