@@ -1196,6 +1196,27 @@
             border-radius: 4px;
             margin-top: 4px;
         }
+
+        /* ===== ESTILO PARA BOTONES DE ACCIÓN ===== */
+        .btn-sync {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+            touch-action: manipulation;
+        }
+
+        .btn-sync:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-sync:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
@@ -1224,7 +1245,7 @@
             </div>
 
             <div style="margin-top: 24px;">
-                <small>Versión 7.0.0 | Sin Token | Sincronización con JSONBin.io</small>
+                <small>Versión 8.0.0 | Sin Token | Sincronización con JSONBin.io</small>
             </div>
             <div class="footer-brand">
                 <span class="brand">AndyWash</span> &copy; 2024
@@ -1445,11 +1466,11 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT - CORREGIDO -->
+    <!-- JAVASCRIPT - REESTRUCTURADO -->
     <!-- ============================================================ -->
     <script>
         // ================================================================
-        // 1. CONFIGURACIÓN - CON CREDENCIALES JSONBIN.IO
+        // 1. CONFIGURACIÓN
         // ================================================================
 
         const CONFIG_PREDETERMINADO = {
@@ -1464,17 +1485,249 @@
         };
 
         // ================================================================
-        // 2. VARIABLES GLOBALES
+        // 2. BASE DE DATOS - CLASE
         // ================================================================
 
-        let db = {
-            motos: [],
-            ordenes: [],
-            servicios: [],
-            usuarios: [],
-            salarios: [],
-            gastos: []
-        };
+        class Database {
+            constructor() {
+                this.data = {
+                    motos: [],
+                    ordenes: [],
+                    servicios: [],
+                    usuarios: [],
+                    salarios: [],
+                    gastos: []
+                };
+                this.cargado = false;
+            }
+
+            // Inicializar con datos por defecto
+            initDefault() {
+                this.data = {
+                    motos: [],
+                    ordenes: [],
+                    servicios: [
+                        { id: 1, nombre: 'Lavado Básico', precio: 15000, activo: true },
+                        { id: 2, nombre: 'Lavado Premium', precio: 25000, activo: true },
+                        { id: 3, nombre: 'Lavado Completo', precio: 35000, activo: true }
+                    ],
+                    usuarios: [
+                        { id: 1, username: 'admin', nombre: 'Administrador', pin: '5678', rol: 'admin', estado: 'activo',
+                            fechaCreacion: new Date().toISOString() },
+                        { id: 2, username: 'lavador', nombre: 'Lavador Principal', pin: '1234', rol: 'lavador',
+                            estado: 'activo', fechaCreacion: new Date().toISOString() },
+                        { id: 3, username: 'lavador2', nombre: 'Lavador Secundario', pin: '1111', rol: 'lavador',
+                            estado: 'activo', fechaCreacion: new Date().toISOString() }
+                    ],
+                    salarios: [],
+                    gastos: []
+                };
+                this.cargado = true;
+                this.guardarLocal();
+                console.log('📦 Datos por defecto inicializados');
+                return this.data;
+            }
+
+            // Cargar desde localStorage
+            cargarLocal() {
+                try {
+                    const stored = localStorage.getItem('andywash_db_v2');
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (parsed && parsed.data) {
+                            this.data = parsed.data;
+                            this.cargado = true;
+                            console.log('✅ Datos cargados desde localStorage');
+                            console.log('📦 Motos:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
+                            return this.data;
+                        }
+                    }
+                    return this.initDefault();
+                } catch (error) {
+                    console.error('Error al cargar datos:', error);
+                    return this.initDefault();
+                }
+            }
+
+            // Guardar en localStorage
+            guardarLocal() {
+                try {
+                    localStorage.setItem('andywash_db_v2', JSON.stringify({
+                        data: this.data,
+                        actualizacion: new Date().toISOString()
+                    }));
+                    console.log('✅ Datos guardados en localStorage');
+                    console.log('📦 Motos guardadas:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
+                    return true;
+                } catch (error) {
+                    console.error('Error al guardar datos:', error);
+                    return false;
+                }
+            }
+
+            // Obtener todos los datos
+            getAll() {
+                return this.data;
+            }
+
+            // Obtener motos
+            getMotos() {
+                return this.data.motos || [];
+            }
+
+            // Obtener órdenes
+            getOrdenes() {
+                return this.data.ordenes || [];
+            }
+
+            // Obtener servicios
+            getServicios() {
+                return this.data.servicios || [];
+            }
+
+            // Obtener usuarios
+            getUsuarios() {
+                return this.data.usuarios || [];
+            }
+
+            // Agregar moto
+            agregarMoto(moto) {
+                this.data.motos.push(moto);
+                this.guardarLocal();
+                console.log('✅ Moto agregada:', moto);
+                return moto;
+            }
+
+            // Agregar orden
+            agregarOrden(orden) {
+                this.data.ordenes.push(orden);
+                this.guardarLocal();
+                console.log('✅ Orden agregada:', orden);
+                return orden;
+            }
+
+            // Actualizar moto
+            actualizarMoto(motoId, nuevosDatos) {
+                const index = this.data.motos.findIndex(m => m.id === motoId);
+                if (index !== -1) {
+                    this.data.motos[index] = { ...this.data.motos[index], ...nuevosDatos };
+                    this.guardarLocal();
+                    return this.data.motos[index];
+                }
+                return null;
+            }
+
+            // Eliminar moto
+            eliminarMoto(motoId) {
+                const index = this.data.motos.findIndex(m => m.id === motoId);
+                if (index !== -1) {
+                    this.data.motos.splice(index, 1);
+                    // Eliminar órdenes asociadas
+                    this.data.ordenes = this.data.ordenes.filter(o => o.motoId !== motoId);
+                    this.guardarLocal();
+                    return true;
+                }
+                return false;
+            }
+
+            // Sincronizar con JSONBin
+            async sincronizarConNube() {
+                if (!CONFIG.binId || !CONFIG.apiKey) {
+                    console.log('⚠️ No hay configuración de sincronización');
+                    return false;
+                }
+
+                if (!navigator.onLine) {
+                    console.log('⚠️ Sin conexión a internet');
+                    return false;
+                }
+
+                if (CONFIG.sincronizando) {
+                    console.log('⚠️ Ya hay una sincronización en curso');
+                    return false;
+                }
+
+                CONFIG.sincronizando = true;
+                const syncIndicator = document.getElementById('syncIndicator');
+                if (syncIndicator) syncIndicator.textContent = '⏳';
+
+                try {
+                    // Leer datos remotos
+                    const readResponse = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
+                        headers: { 'X-Master-Key': CONFIG.apiKey }
+                    });
+
+                    let datosLocales = this.data;
+                    let fechaLocal = localStorage.getItem('andywash_db_v2_actualizacion') || '';
+
+                    if (readResponse.ok) {
+                        const data = await readResponse.json();
+                        if (data.record && data.record.data) {
+                            const fechaRemota = data.record.actualizacion || '';
+
+                            if (fechaRemota > fechaLocal) {
+                                // Los datos remotos son más recientes
+                                this.data = data.record.data;
+                                this.guardarLocal();
+                                console.log('✅ Datos sincronizados desde la nube');
+                                mostrarToast('📥 Datos actualizados desde la nube', 'success');
+                                if (syncIndicator) syncIndicator.textContent = '☁️';
+                                CONFIG.sincronizando = false;
+                                return true;
+                            }
+                        }
+                    }
+
+                    // Subir datos locales (son más recientes o no hay datos remotos)
+                    const dataToSave = {
+                        data: this.data,
+                        actualizacion: new Date().toISOString()
+                    };
+
+                    const putResponse = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': CONFIG.apiKey
+                        },
+                        body: JSON.stringify(dataToSave)
+                    });
+
+                    if (putResponse.ok) {
+                        localStorage.setItem('andywash_db_v2_actualizacion', dataToSave.actualizacion);
+                        console.log('✅ Datos subidos a JSONBin');
+                        mostrarToast('📤 Datos sincronizados en la nube', 'success');
+                        if (syncIndicator) syncIndicator.textContent = '☁️';
+                        CONFIG.sincronizando = false;
+                        return true;
+                    } else {
+                        const error = await putResponse.json();
+                        console.error('Error al subir a JSONBin:', error);
+                        mostrarToast('❌ Error al sincronizar', 'error');
+                        if (syncIndicator) syncIndicator.textContent = '❌';
+                        CONFIG.sincronizando = false;
+                        return false;
+                    }
+
+                } catch (error) {
+                    console.error('Error en sincronización:', error);
+                    mostrarToast('❌ Error al sincronizar', 'error');
+                    if (syncIndicator) syncIndicator.textContent = '❌';
+                    CONFIG.sincronizando = false;
+                    return false;
+                }
+            }
+        }
+
+        // ================================================================
+        // 3. INSTANCIA GLOBAL DE LA BASE DE DATOS
+        // ================================================================
+
+        const db = new Database();
+
+        // ================================================================
+        // 4. VARIABLES GLOBALES
+        // ================================================================
 
         let usuarioActual = null;
         let rolActual = 'lavador';
@@ -1485,7 +1738,7 @@
         let appInicializada = false;
 
         // ================================================================
-        // 3. TOAST Y NAVEGACIÓN
+        // 5. TOAST Y NAVEGACIÓN
         // ================================================================
 
         function mostrarToast(mensaje, tipo = 'info') {
@@ -1535,7 +1788,7 @@
         }
 
         // ================================================================
-        // 4. LOGIN
+        // 6. LOGIN
         // ================================================================
 
         async function handleLogin(event) {
@@ -1549,9 +1802,11 @@
             btn.disabled = true;
 
             try {
-                await cargarDatosLocales();
+                // Cargar datos
+                db.cargarLocal();
 
-                const usuario = db.usuarios.find(u =>
+                const usuarios = db.getUsuarios();
+                const usuario = usuarios.find(u =>
                     u.pin === pin &&
                     u.rol === role &&
                     u.estado === 'activo'
@@ -1582,7 +1837,7 @@
         }
 
         // ================================================================
-        // 5. INICIAR APLICACIÓN
+        // 7. INICIAR APLICACIÓN
         // ================================================================
 
         async function iniciarApp(rol, usuario) {
@@ -1622,11 +1877,11 @@
                 }
 
                 // Cargar datos desde localStorage
-                await cargarDatosLocales();
+                db.cargarLocal();
 
                 // Sincronizar con JSONBin (sin bloquear)
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                    sincronizarConJSONBin();
+                    db.sincronizarConNube();
                 }
 
                 // Renderizar según rol
@@ -1644,7 +1899,7 @@
                 if (window._syncInterval) clearInterval(window._syncInterval);
                 window._syncInterval = setInterval(() => {
                     if (navigator.onLine && CONFIG.binId && CONFIG.apiKey) {
-                        sincronizarConJSONBin();
+                        db.sincronizarConNube();
                     }
                 }, 60000);
 
@@ -1665,7 +1920,7 @@
         }
 
         // ================================================================
-        // 6. CARGA Y GUARDADO LOCAL
+        // 8. FUNCIONES DE SINCRONIZACIÓN
         // ================================================================
 
         function verificarEstadoConexion() {
@@ -1686,67 +1941,6 @@
                 if (syncIndicator) syncIndicator.textContent = '📡 Offline';
             }
         }
-
-        function cargarDatosLocales() {
-            try {
-                const data = localStorage.getItem('andywash_db');
-                if (data) {
-                    const parsed = JSON.parse(data);
-                    if (parsed && parsed.db) {
-                        db = parsed.db;
-                        console.log('✅ Datos cargados desde localStorage');
-                        console.log('📦 Motos:', db.motos.length, 'Órdenes:', db.ordenes.length);
-                        return true;
-                    }
-                }
-                inicializarDatosPorDefecto();
-                return false;
-            } catch (error) {
-                console.error('Error al cargar datos locales:', error);
-                inicializarDatosPorDefecto();
-                return false;
-            }
-        }
-
-        function guardarDatosLocales() {
-            try {
-                localStorage.setItem('andywash_db', JSON.stringify({ db: db, actualizacion: new Date().toISOString() }));
-                console.log('✅ Datos guardados en localStorage');
-                console.log('📦 Motos guardadas:', db.motos.length, 'Órdenes:', db.ordenes.length);
-                return true;
-            } catch (error) {
-                console.error('Error al guardar datos locales:', error);
-                return false;
-            }
-        }
-
-        function inicializarDatosPorDefecto() {
-            db = {
-                motos: [],
-                ordenes: [],
-                servicios: [
-                    { id: 1, nombre: 'Lavado Básico', precio: 15000, activo: true },
-                    { id: 2, nombre: 'Lavado Premium', precio: 25000, activo: true },
-                    { id: 3, nombre: 'Lavado Completo', precio: 35000, activo: true }
-                ],
-                usuarios: [
-                    { id: 1, username: 'admin', nombre: 'Administrador', pin: '5678', rol: 'admin', estado: 'activo',
-                        fechaCreacion: new Date().toISOString() },
-                    { id: 2, username: 'lavador', nombre: 'Lavador Principal', pin: '1234', rol: 'lavador',
-                        estado: 'activo', fechaCreacion: new Date().toISOString() },
-                    { id: 3, username: 'lavador2', nombre: 'Lavador Secundario', pin: '1111', rol: 'lavador',
-                        estado: 'activo', fechaCreacion: new Date().toISOString() }
-                ],
-                salarios: [],
-                gastos: []
-            };
-            guardarDatosLocales();
-            console.log('📦 Datos por defecto inicializados');
-        }
-
-        // ================================================================
-        // 7. SINCRONIZACIÓN CON JSONBIN.IO
-        // ================================================================
 
         function cargarConfigSync() {
             try {
@@ -1775,104 +1969,25 @@
             }
         }
 
-        async function sincronizarConJSONBin() {
-            if (!CONFIG.binId || !CONFIG.apiKey) {
-                console.log('⚠️ No hay configuración de sincronización');
-                return;
-            }
+        // ================================================================
+        // 9. ACTUALIZAR UI
+        // ================================================================
 
-            if (!navigator.onLine) {
-                console.log('⚠️ Sin conexión a internet');
-                return;
-            }
-
-            if (CONFIG.sincronizando) {
-                console.log('⚠️ Ya hay una sincronización en curso');
-                return;
-            }
-
-            CONFIG.sincronizando = true;
-            const syncIndicator = document.getElementById('syncIndicator');
-            if (syncIndicator) syncIndicator.textContent = '⏳';
-
-            try {
-                const readResponse = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
-                    headers: {
-                        'X-Master-Key': CONFIG.apiKey
-                    }
-                });
-
-                if (readResponse.ok) {
-                    const data = await readResponse.json();
-                    if (data.record && data.record.db) {
-                        const localFecha = localStorage.getItem('andywash_db_actualizacion') || '';
-                        const remotaFecha = data.record.actualizacion || '';
-
-                        if (remotaFecha > localFecha && data.record.db.motos) {
-                            db = data.record.db;
-                            guardarDatosLocales();
-                            console.log('✅ Datos sincronizados desde la nube');
-                            mostrarToast('📥 Datos actualizados desde la nube', 'success');
-                            actualizarUI();
-                        } else {
-                            await subirDatosJSONBin();
-                        }
-                    } else {
-                        await subirDatosJSONBin();
-                    }
-                } else {
-                    await subirDatosJSONBin();
-                }
-
-            } catch (error) {
-                console.error('Error en sincronización:', error);
-                mostrarToast('❌ Error al sincronizar', 'error');
-            } finally {
-                CONFIG.sincronizando = false;
-                if (syncIndicator) syncIndicator.textContent = CONFIG.binId ? '☁️' : '🔄';
-            }
-        }
-
-        async function subirDatosJSONBin() {
-            if (!CONFIG.binId || !CONFIG.apiKey) {
-                console.log('⚠️ No hay configuración de sincronización');
-                return;
-            }
-
-            try {
-                const dataToSave = {
-                    db: db,
-                    actualizacion: new Date().toISOString()
-                };
-
-                const response = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': CONFIG.apiKey
-                    },
-                    body: JSON.stringify(dataToSave)
-                });
-
-                if (response.ok) {
-                    localStorage.setItem('andywash_db_actualizacion', dataToSave.actualizacion);
-                    console.log('✅ Datos subidos a JSONBin');
-                    mostrarToast('📤 Datos sincronizados en la nube', 'success');
-                    const syncIndicator = document.getElementById('syncIndicator');
-                    if (syncIndicator) syncIndicator.textContent = '☁️';
-                } else {
-                    const error = await response.json();
-                    console.error('Error al subir a JSONBin:', error);
-                    mostrarToast('❌ Error al subir datos', 'error');
-                }
-            } catch (error) {
-                console.error('Error al subir datos:', error);
-                mostrarToast('❌ Error al subir datos', 'error');
+        function actualizarUI() {
+            const seccionActual = document.querySelector('.section.active');
+            if (seccionActual) {
+                const id = seccionActual.id;
+                if (id === 'tablero') cargarTablero();
+                else if (id === 'mis-motos') cargarMotosHoy();
+                else if (id === 'dashboard' || id === 'contabilidad') actualizarContabilidad();
+                else if (id === 'caja') cargarResumenCajaAdmin();
+                else if (id === 'servicios') cargarServiciosAdmin();
+                else if (id === 'usuarios') cargarUsuarios();
             }
         }
 
         // ================================================================
-        // 8. MODAL DE CONFIGURACIÓN DE SINCRONIZACIÓN
+        // 10. MODAL DE CONFIGURACIÓN DE SINCRONIZACIÓN
         // ================================================================
 
         function abrirModalSyncConfig() {
@@ -1917,7 +2032,7 @@
                     msgEl.style.display = 'block';
 
                     setTimeout(async () => {
-                        await sincronizarConJSONBin();
+                        await db.sincronizarConNube();
                         cerrarModalSyncConfig();
                         actualizarUI();
                     }, 1000);
@@ -1930,39 +2045,6 @@
                 msgEl.textContent = '❌ Error al conectar con JSONBin. Verifica tu conexión a internet.';
                 msgEl.className = 'mensaje error';
                 msgEl.style.display = 'block';
-            }
-        }
-
-        // ================================================================
-        // 9. ACTUALIZAR UI
-        // ================================================================
-
-        function actualizarUI() {
-            const seccionActual = document.querySelector('.section.active');
-            if (seccionActual) {
-                const id = seccionActual.id;
-                if (id === 'tablero') cargarTablero();
-                else if (id === 'mis-motos') cargarMotosHoy();
-                else if (id === 'dashboard' || id === 'contabilidad') actualizarContabilidad();
-                else if (id === 'caja') cargarResumenCajaAdmin();
-                else if (id === 'servicios') cargarServiciosAdmin();
-                else if (id === 'usuarios') cargarUsuarios();
-            }
-        }
-
-        // ================================================================
-        // 10. FUNCIONES DE NEGOCIO - CORREGIDAS
-        // ================================================================
-
-        async function guardarYSincronizar() {
-            guardarDatosLocales();
-
-            if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                try {
-                    await sincronizarConJSONBin();
-                } catch (error) {
-                    console.error('Error al sincronizar:', error);
-                }
             }
         }
 
@@ -2004,19 +2086,19 @@
         }
 
         // ================================================================
-        // 12. LAVADOR - NUEVO INGRESO - CORREGIDO
+        // 12. LAVADOR - NUEVO INGRESO (CORREGIDO)
         // ================================================================
 
         async function renderizarLavadorNuevoIngreso() {
             const main = document.getElementById('mainContent');
             if (!main) return;
 
-            const servicios = db.servicios ? db.servicios.filter(s => s.activo) : [];
+            const servicios = db.getServicios().filter(s => s.activo);
 
             main.innerHTML = `
                 <section class="section active">
                     <h2>📝 Nuevo Ingreso</h2>
-                    <form id="ingresoForm" onsubmit="registrarIngreso(event)">
+                    <form id="ingresoForm" onsubmit="return registrarIngreso(event)">
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Placa *</label>
@@ -2060,11 +2142,13 @@
         }
 
         // ================================================================
-        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA
+        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA (GLOBAL)
         // ================================================================
 
-        async function registrarIngreso(event) {
-            event.preventDefault();
+        window.registrarIngreso = async function(event) {
+            if (event) event.preventDefault();
+
+            console.log('📝 Ejecutando registrarIngreso...');
 
             const placa = document.getElementById('placa').value.toUpperCase().trim();
             const tipo = document.getElementById('tipo').value;
@@ -2074,70 +2158,79 @@
 
             if (!placa) {
                 mostrarMensaje('❌ La placa es obligatoria', 'error');
-                return;
+                return false;
             }
 
             try {
-                const servicio = db.servicios.find(s => s.id === servicioId);
+                const servicios = db.getServicios();
+                const servicio = servicios.find(s => s.id === servicioId);
 
                 if (!servicio) {
                     mostrarMensaje('❌ Servicio no encontrado', 'error');
-                    return;
+                    return false;
                 }
 
+                // Crear ID único
+                const nuevoId = Date.now() + Math.floor(Math.random() * 1000);
+
                 const moto = {
-                    id: Date.now() + Math.random() * 1000,
+                    id: nuevoId,
                     placa: placa,
                     tipo: tipo,
                     observacion: observacion,
                     estado: 'Espera',
                     fechaIngreso: new Date().toISOString(),
-                    sincronizado: false,
                     servicioId: servicioId,
                     precioAplicado: servicio.precio,
                     usuarioCreador: usuarioActual ? usuarioActual.id : null
                 };
 
                 const orden = {
-                    id: Date.now() + Math.random() * 2000,
+                    id: nuevoId + 1000,
                     motoId: moto.id,
                     servicioId: servicioId,
                     precioAplicado: servicio.precio,
                     metodoPago: metodoPago,
                     fecha: new Date().toISOString(),
-                    sincronizado: false,
                     usuarioCreador: usuarioActual ? usuarioActual.id : null
                 };
 
                 // Agregar a la base de datos
-                db.motos.push(moto);
-                db.ordenes.push(orden);
+                db.agregarMoto(moto);
+                db.agregarOrden(orden);
 
                 console.log('📝 Moto registrada:', moto);
                 console.log('📝 Orden registrada:', orden);
-
-                // Guardar localmente y sincronizar
-                await guardarYSincronizar();
+                console.log('📦 Total motos:', db.getMotos().length);
 
                 mostrarMensaje(`✅ Moto ${placa} registrada exitosamente`, 'success');
                 document.getElementById('ingresoForm').reset();
 
-                // Actualizar tablero si está visible
-                if (document.getElementById('tableroLista')) {
-                    cargarTablero();
-                }
-
                 // Actualizar contador en sync
                 const datosStatus = document.getElementById('datosStatus');
                 if (datosStatus) {
-                    datosStatus.textContent = `${db.motos.length} motos, ${db.ordenes.length} órdenes`;
+                    datosStatus.textContent = `${db.getMotos().length} motos, ${db.getOrdenes().length} órdenes`;
                 }
+
+                // Sincronizar en segundo plano
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
+
+                // Actualizar tablero si está visible
+                const tableroLista = document.getElementById('tableroLista');
+                if (tableroLista) {
+                    cargarTablero();
+                }
+
+                return true;
 
             } catch (error) {
                 console.error('Error al registrar:', error);
                 mostrarMensaje('❌ Error al registrar la moto: ' + error.message, 'error');
+                return false;
             }
-        }
+        };
 
         function mostrarMensaje(texto, tipo) {
             const el = document.getElementById('ingresoMensaje');
@@ -2151,7 +2244,7 @@
         }
 
         // ================================================================
-        // 14. LAVADOR - TABLERO
+        // 14. LAVADOR - TABLERO (CORREGIDO)
         // ================================================================
 
         async function renderizarLavadorTablero() {
@@ -2173,9 +2266,11 @@
             await cargarTablero();
         }
 
-        async function cargarTablero() {
+        window.cargarTablero = async function() {
             try {
-                let motos = db.motos || [];
+                let motos = db.getMotos();
+                console.log('📋 Cargando tablero con', motos.length, 'motos');
+
                 if (filtroActual !== 'todos') {
                     motos = motos.filter(m => m.estado === filtroActual);
                 }
@@ -2190,7 +2285,7 @@
                     return;
                 }
 
-                const ordenes = db.ordenes || [];
+                const ordenes = db.getOrdenes();
 
                 container.innerHTML = motos.map(moto => {
                     const orden = ordenes.find(o => o.motoId === moto.id);
@@ -2248,7 +2343,7 @@
             } catch (error) {
                 console.error('Error al cargar tablero:', error);
             }
-        }
+        };
 
         function filtrarEstados(estado) {
             filtroActual = estado;
@@ -2263,7 +2358,7 @@
         // 15. ELIMINAR MOTO (Admin)
         // ================================================================
 
-        function eliminarMoto(motoId) {
+        window.eliminarMoto = function(motoId) {
             if (usuarioActual?.rol !== 'admin') {
                 mostrarToast('❌ Solo administradores pueden eliminar', 'error');
                 return;
@@ -2274,14 +2369,8 @@
                 '¿Estás seguro de eliminar esta moto y su orden? Esta acción no se puede deshacer.',
                 async () => {
                     try {
-                        const indexMoto = db.motos.findIndex(m => m.id == motoId);
-                        if (indexMoto > -1) db.motos.splice(indexMoto, 1);
-
-                        const indexOrden = db.ordenes.findIndex(o => o.motoId == motoId);
-                        if (indexOrden > -1) db.ordenes.splice(indexOrden, 1);
-
-                        await guardarYSincronizar();
-                        cargarTablero();
+                        db.eliminarMoto(motoId);
+                        await cargarTablero();
                         mostrarToast('✅ Ticket eliminado correctamente', 'success');
                     } catch (error) {
                         console.error('Error al eliminar:', error);
@@ -2289,7 +2378,7 @@
                     }
                 }
             );
-        }
+        };
 
         // ================================================================
         // 16. FORMATEAR SISTEMA (Admin)
@@ -2308,17 +2397,24 @@
                 '¿Estás ABSOLUTAMENTE seguro?',
                 async () => {
                     try {
-                        const servicios = db.servicios;
-                        const adminUser = db.usuarios.find(u => u.username === 'admin');
+                        const servicios = db.getServicios();
+                        const usuarios = db.getUsuarios();
+                        const adminUser = usuarios.find(u => u.username === 'admin');
 
-                        db.motos = [];
-                        db.ordenes = [];
-                        db.salarios = [];
-                        db.gastos = [];
-                        db.usuarios = [adminUser];
-                        db.servicios = servicios;
+                        // Reiniciar datos
+                        db.data.motos = [];
+                        db.data.ordenes = [];
+                        db.data.salarios = [];
+                        db.data.gastos = [];
+                        db.data.usuarios = [adminUser];
+                        db.data.servicios = servicios;
+                        db.guardarLocal();
 
-                        await guardarYSincronizar();
+                        // Sincronizar
+                        if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                            await db.sincronizarConNube();
+                        }
+
                         mostrarToast('✅ Sistema formateado correctamente', 'success');
                         actualizarUI();
                     } catch (error) {
@@ -2358,14 +2454,16 @@
         // 18. MODAL PAGO
         // ================================================================
 
-        function abrirModalPago(motoId) {
-            const moto = db.motos.find(m => m.id == motoId);
+        window.abrirModalPago = function(motoId) {
+            const motos = db.getMotos();
+            const moto = motos.find(m => m.id == motoId);
             if (!moto) { alert('Moto no encontrada'); return; }
 
             motoParaEntregar = moto;
             metodoPagoSeleccionado = 'Efectivo';
 
-            const orden = db.ordenes.find(o => o.motoId == motoId);
+            const ordenes = db.getOrdenes();
+            const orden = ordenes.find(o => o.motoId == motoId);
             const precio = orden?.precioAplicado || moto.precioAplicado || 0;
 
             const placaEl = document.getElementById('modalPlaca');
@@ -2384,7 +2482,7 @@
 
             const modal = document.getElementById('modalPago');
             if (modal) modal.classList.remove('hidden');
-        }
+        };
 
         function seleccionarMetodoPago(metodo) {
             metodoPagoSeleccionado = metodo;
@@ -2401,7 +2499,7 @@
             motoParaEntregar = null;
         }
 
-        async function confirmarEntrega() {
+        window.confirmarEntrega = async function() {
             if (!motoParaEntregar) {
                 const errorEl = document.getElementById('modalError');
                 if (errorEl) errorEl.textContent = '❌ Error: No hay moto seleccionada';
@@ -2410,21 +2508,22 @@
 
             try {
                 const motoId = motoParaEntregar.id;
-                const moto = db.motos.find(m => m.id == motoId);
+                const motos = db.getMotos();
+                const moto = motos.find(m => m.id == motoId);
                 if (!moto) {
                     const errorEl = document.getElementById('modalError');
                     if (errorEl) errorEl.textContent = '❌ Moto no encontrada';
                     return;
                 }
 
-                const orden = db.ordenes.find(o => o.motoId == motoId);
+                const ordenes = db.getOrdenes();
+                const orden = ordenes.find(o => o.motoId == motoId);
                 if (orden) {
                     orden.metodoPago = metodoPagoSeleccionado;
-                    orden.sincronizado = false;
                 }
 
                 moto.estado = 'Entregado';
-                moto.sincronizado = false;
+                db.guardarLocal();
 
                 cerrarModalPago();
 
@@ -2432,7 +2531,11 @@
                     `✅ ${moto.placa} entregada - Pago: ${metodoPagoSeleccionado} $${(orden?.precioAplicado || moto.precioAplicado || 0).toLocaleString()}`;
                 mostrarToast(msg, 'success');
 
-                await guardarYSincronizar();
+                // Sincronizar
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
+
                 cargarTablero();
                 cargarMotosHoy();
 
@@ -2441,19 +2544,23 @@
                 const errorEl = document.getElementById('modalError');
                 if (errorEl) errorEl.textContent = '❌ Error al procesar la entrega';
             }
-        }
+        };
 
-        async function entregarSinPago(motoId) {
+        window.entregarSinPago = async function(motoId) {
             if (!confirm('¿Confirmar entrega de esta moto?')) return;
 
             try {
-                const moto = db.motos.find(m => m.id == motoId);
+                const motos = db.getMotos();
+                const moto = motos.find(m => m.id == motoId);
                 if (!moto) return;
 
                 moto.estado = 'Entregado';
-                moto.sincronizado = false;
+                db.guardarLocal();
 
-                await guardarYSincronizar();
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
+
                 cargarTablero();
                 cargarMotosHoy();
                 mostrarToast(`✅ ${moto.placa} entregada`, 'success');
@@ -2462,17 +2569,21 @@
                 console.error('Error al entregar:', error);
                 alert('Error al entregar la moto');
             }
-        }
+        };
 
-        async function cambiarEstadoMoto(motoId, nuevoEstado) {
+        window.cambiarEstadoMoto = async function(motoId, nuevoEstado) {
             try {
-                const moto = db.motos.find(m => m.id == motoId);
+                const motos = db.getMotos();
+                const moto = motos.find(m => m.id == motoId);
                 if (!moto) return;
 
                 moto.estado = nuevoEstado;
-                moto.sincronizado = false;
+                db.guardarLocal();
 
-                await guardarYSincronizar();
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
+
                 cargarTablero();
                 cargarMotosHoy();
 
@@ -2480,7 +2591,7 @@
                 console.error('Error al cambiar estado:', error);
                 alert('Error al cambiar estado');
             }
-        }
+        };
 
         // ================================================================
         // 19. LAVADOR - MIS MOTOS HOY
@@ -2504,16 +2615,16 @@
             await cargarMotosHoy();
         }
 
-        async function cargarMotosHoy() {
+        window.cargarMotosHoy = async function() {
             try {
                 const hoy = new Date();
                 const hoyStr = hoy.toISOString().split('T')[0];
-                const motos = db.motos.filter(m => {
+                const motos = db.getMotos().filter(m => {
                     const mFecha = new Date(m.fechaIngreso).toISOString().split('T')[0];
                     return mFecha === hoyStr;
                 });
 
-                const ordenesHoy = db.ordenes.filter(o => {
+                const ordenesHoy = db.getOrdenes().filter(o => {
                     const oFecha = new Date(o.fecha).toISOString().split('T')[0];
                     return oFecha === hoyStr;
                 });
@@ -2546,7 +2657,7 @@
                 }
 
                 container.innerHTML = motos.map(moto => {
-                    const orden = db.ordenes.find(o => o.motoId === moto.id);
+                    const orden = db.getOrdenes().find(o => o.motoId === moto.id);
                     const metodoPago = orden?.metodoPago || 'Pendiente';
                     const precio = orden?.precioAplicado || moto.precioAplicado || 0;
 
@@ -2569,7 +2680,7 @@
             } catch (error) {
                 console.error('Error al cargar motos de hoy:', error);
             }
-        }
+        };
 
         // ================================================================
         // 20. LAVADOR - SYNC
@@ -2601,7 +2712,7 @@
                         </div>
                         <div class="status-card">
                             <span class="status-label">Datos guardados:</span>
-                            <span id="datosStatus">${db.motos.length} motos, ${db.ordenes.length} órdenes</span>
+                            <span id="datosStatus">${db.getMotos().length} motos, ${db.getOrdenes().length} órdenes</span>
                         </div>
                     </div>
 
@@ -2622,15 +2733,15 @@
             verificarEstadoConexion();
         }
 
-        async function sincronizarAhora() {
+        window.sincronizarAhora = async function() {
             if (!CONFIG.binId || !CONFIG.apiKey) {
                 mostrarToast('⚠️ Primero configura la sincronización', 'error');
                 abrirModalSyncConfig();
                 return;
             }
-            await sincronizarConJSONBin();
+            await db.sincronizarConNube();
             actualizarUI();
-        }
+        };
 
         // ================================================================
         // 21. ADMIN - SIDEBAR
@@ -2687,7 +2798,8 @@
 
             const hoy = new Date();
             const hoyStr = hoy.toISOString().split('T')[0];
-            const ordenesHoy = db.ordenes.filter(o => {
+            const ordenes = db.getOrdenes();
+            const ordenesHoy = ordenes.filter(o => {
                 const oFecha = new Date(o.fecha).toISOString().split('T')[0];
                 return oFecha === hoyStr;
             });
@@ -2835,12 +2947,12 @@
             if (gastos) gastos.style.display = pestana === 'gastos' ? 'block' : 'none';
         }
 
-        async function actualizarContabilidad() {
+        window.actualizarContabilidad = async function() {
             const fechaInicio = new Date(document.getElementById('contFechaInicio').value);
             const fechaFin = new Date(document.getElementById('contFechaFin').value);
             fechaFin.setHours(23, 59, 59, 999);
 
-            const ordenes = db.ordenes.filter(o => {
+            const ordenes = db.getOrdenes().filter(o => {
                 const oFecha = new Date(o.fecha);
                 return oFecha >= fechaInicio && oFecha <= fechaFin && o.metodoPago !== 'Pendiente';
             });
@@ -2848,12 +2960,14 @@
             const totalVentas = ordenes.reduce((sum, o) => sum + (o.precioAplicado || 0), 0);
             const totalMotos = ordenes.length;
 
-            const totalSalarios = db.salarios.filter(s => {
+            const salarios = db.data.salarios || [];
+            const totalSalarios = salarios.filter(s => {
                 const sFecha = new Date(s.fechaPago);
                 return sFecha >= fechaInicio && sFecha <= fechaFin;
             }).reduce((sum, s) => sum + (s.montoTotal || 0), 0);
 
-            const totalGastos = db.gastos.filter(g => {
+            const gastos = db.data.gastos || [];
+            const totalGastos = gastos.filter(g => {
                 const gFecha = new Date(g.fecha);
                 return gFecha >= fechaInicio && gFecha <= fechaFin;
             }).reduce((sum, g) => sum + g.monto, 0);
@@ -2882,9 +2996,9 @@
                         `<tr><td colspan="7" style="text-align:center;">No hay ventas en este periodo</td></tr>`;
                 } else {
                     tbodyVentas.innerHTML = ordenes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).map(o => {
-                        const moto = db.motos.find(m => m.id === o.motoId);
-                        const servicio = db.servicios.find(s => s.id === o.servicioId);
-                        const usuario = db.usuarios.find(u => u.id === o.usuarioCreador);
+                        const moto = db.getMotos().find(m => m.id === o.motoId);
+                        const servicio = db.getServicios().find(s => s.id === o.servicioId);
+                        const usuario = db.getUsuarios().find(u => u.id === o.usuarioCreador);
                         return `
                             <tr>
                                 <td>#${o.id}</td>
@@ -2911,7 +3025,7 @@
             }
 
             // Salarios
-            const salariosFiltrados = db.salarios.filter(s => {
+            const salariosFiltrados = salarios.filter(s => {
                 const sFecha = new Date(s.fechaPago);
                 return sFecha >= fechaInicio && sFecha <= fechaFin;
             }).sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
@@ -2923,7 +3037,7 @@
                         `<tr><td colspan="7" style="text-align:center;">No hay salarios pagados en este periodo</td></tr>`;
                 } else {
                     tbodySalarios.innerHTML = salariosFiltrados.map(s => {
-                        const usuario = db.usuarios.find(u => u.id === s.usuarioId);
+                        const usuario = db.getUsuarios().find(u => u.id === s.usuarioId);
                         return `
                             <tr>
                                 <td>${usuario?.nombre || 'N/A'}</td>
@@ -2950,7 +3064,7 @@
             }
 
             // Gastos
-            const gastosFiltrados = db.gastos.filter(g => {
+            const gastosFiltrados = gastos.filter(g => {
                 const gFecha = new Date(g.fecha);
                 return gFecha >= fechaInicio && gFecha <= fechaFin;
             }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
@@ -2982,7 +3096,7 @@
                     </tr>
                 `;
             }
-        }
+        };
 
         // ================================================================
         // 25. MODAL SALARIO
@@ -2995,7 +3109,7 @@
             const msgEl = document.getElementById('salarioMensaje');
             if (msgEl) msgEl.style.display = 'none';
 
-            const usuarios = db.usuarios.filter(u => u.rol === 'lavador' && u.estado === 'activo');
+            const usuarios = db.getUsuarios().filter(u => u.rol === 'lavador' && u.estado === 'activo');
             const select = document.getElementById('salarioLavador');
             if (select) {
                 select.innerHTML = usuarios.map(u =>
@@ -3004,8 +3118,9 @@
             }
 
             if (usuarioId) {
-                const salarios = db.salarios.filter(s => s.usuarioId === usuarioId);
-                const ultimo = salarios.sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))[0];
+                const salarios = db.data.salarios || [];
+                const ultimo = salarios.filter(s => s.usuarioId === usuarioId).sort((a, b) => new Date(b.fechaPago) - new Date(
+                    a.fechaPago))[0];
                 if (ultimo) {
                     const montoEl = document.getElementById('salarioMonto');
                     if (montoEl) montoEl.value = ultimo.montoBase || '';
@@ -3064,7 +3179,9 @@
                     fechaPago: new Date().toISOString()
                 };
 
-                db.salarios.push(salario);
+                if (!db.data.salarios) db.data.salarios = [];
+                db.data.salarios.push(salario);
+                db.guardarLocal();
 
                 if (msgEl) {
                     msgEl.textContent = `✅ Salario pagado exitosamente: $${salario.montoTotal.toLocaleString()}`;
@@ -3072,7 +3189,9 @@
                     msgEl.style.display = 'block';
                 }
 
-                await guardarYSincronizar();
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
 
                 setTimeout(() => {
                     cerrarModalSalario();
@@ -3120,8 +3239,13 @@
                     fecha: new Date().toISOString()
                 };
 
-                db.gastos.push(gasto);
-                await guardarYSincronizar();
+                if (!db.data.gastos) db.data.gastos = [];
+                db.data.gastos.push(gasto);
+                db.guardarLocal();
+
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
 
                 mostrarToast('✅ Gasto registrado exitosamente', 'success');
                 actualizarContabilidad();
@@ -3191,7 +3315,7 @@
             }
 
             try {
-                const orden = db.ordenes.find(o => o.id === ordenId);
+                const orden = db.getOrdenes().find(o => o.id === ordenId);
                 if (!orden) {
                     if (msgEl) {
                         msgEl.textContent = '❌ Orden no encontrada';
@@ -3208,7 +3332,11 @@
                 }
 
                 orden.metodoPago = metodoPago;
-                await guardarYSincronizar();
+                db.guardarLocal();
+
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
 
                 if (msgEl) {
                     msgEl.textContent =
@@ -3231,7 +3359,7 @@
             try {
                 const hoy = new Date();
                 const hoyStr = hoy.toISOString().split('T')[0];
-                const ordenes = db.ordenes.filter(o => {
+                const ordenes = db.getOrdenes().filter(o => {
                     const oFecha = new Date(o.fecha).toISOString().split('T')[0];
                     return oFecha === hoyStr;
                 });
@@ -3266,7 +3394,7 @@
             try {
                 const hoy = new Date();
                 const hoyStr = hoy.toISOString().split('T')[0];
-                const ordenes = db.ordenes.filter(o => {
+                const ordenes = db.getOrdenes().filter(o => {
                     const oFecha = new Date(o.fecha).toISOString().split('T')[0];
                     return oFecha === hoyStr;
                 });
@@ -3339,7 +3467,8 @@
             const container = document.getElementById('serviciosListaAdmin');
             if (!container) return;
 
-            container.innerHTML = db.servicios.map(s => `
+            const servicios = db.getServicios();
+            container.innerHTML = servicios.map(s => `
                 <div class="servicio-card">
                     <div class="info">
                         <div class="nombre">${s.nombre}</div>
@@ -3359,10 +3488,13 @@
 
         async function toggleServicioAdmin(id) {
             try {
-                const servicio = db.servicios.find(s => s.id === id);
+                const servicio = db.getServicios().find(s => s.id === id);
                 if (servicio) {
                     servicio.activo = !servicio.activo;
-                    await guardarYSincronizar();
+                    db.guardarLocal();
+                    if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                        db.sincronizarConNube();
+                    }
                     cargarServiciosAdmin();
                 }
             } catch (error) {
@@ -3386,15 +3518,18 @@
                 activo: true
             };
 
-            db.servicios.push(nuevoServicio);
-            guardarYSincronizar();
+            db.data.servicios.push(nuevoServicio);
+            db.guardarLocal();
+            if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                db.sincronizarConNube();
+            }
             cargarServiciosAdmin();
             mostrarToast('✅ Servicio agregado exitosamente', 'success');
         }
 
         async function editarServicioAdmin(id) {
             try {
-                const servicio = db.servicios.find(s => s.id === id);
+                const servicio = db.getServicios().find(s => s.id === id);
                 if (!servicio) return;
 
                 const nombre = prompt('Nuevo nombre:', servicio.nombre);
@@ -3408,7 +3543,10 @@
 
                 servicio.nombre = nombre;
                 servicio.precio = precioNum;
-                await guardarYSincronizar();
+                db.guardarLocal();
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
                 cargarServiciosAdmin();
                 mostrarToast('✅ Servicio actualizado', 'success');
 
@@ -3422,10 +3560,13 @@
             if (!confirm('¿Estás seguro de eliminar este servicio?')) return;
 
             try {
-                const index = db.servicios.findIndex(s => s.id === id);
+                const index = db.data.servicios.findIndex(s => s.id === id);
                 if (index > -1) {
-                    db.servicios.splice(index, 1);
-                    await guardarYSincronizar();
+                    db.data.servicios.splice(index, 1);
+                    db.guardarLocal();
+                    if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                        db.sincronizarConNube();
+                    }
                     cargarServiciosAdmin();
                     mostrarToast('✅ Servicio eliminado', 'success');
                 }
@@ -3468,13 +3609,14 @@
             const tbody = document.getElementById('usuariosTablaBody');
             if (!tbody) return;
 
-            if (db.usuarios.length === 0) {
+            const usuarios = db.getUsuarios();
+            if (usuarios.length === 0) {
                 tbody.innerHTML =
                     `<tr><td colspan="6" style="text-align:center;padding:40px;">No hay usuarios registrados</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = db.usuarios.map(u => `
+            tbody.innerHTML = usuarios.map(u => `
                 <tr>
                     <td><strong>${u.username}</strong></td>
                     <td>${u.nombre}</td>
@@ -3575,7 +3717,8 @@
             }
 
             try {
-                const existe = db.usuarios.find(u =>
+                const usuarios = db.getUsuarios();
+                const existe = usuarios.find(u =>
                     u.username === username &&
                     (id ? u.id != parseInt(id) : true)
                 );
@@ -3590,7 +3733,7 @@
                 }
 
                 if (id) {
-                    const usuario = db.usuarios.find(u => u.id == id);
+                    const usuario = usuarios.find(u => u.id == id);
                     if (!usuario) {
                         if (msgEl) {
                             msgEl.textContent = '❌ Usuario no encontrado';
@@ -3622,7 +3765,7 @@
                         fechaCreacion: new Date().toISOString()
                     };
 
-                    db.usuarios.push(nuevoUsuario);
+                    db.data.usuarios.push(nuevoUsuario);
 
                     if (msgEl) {
                         msgEl.textContent = `✅ Usuario ${username} creado exitosamente`;
@@ -3631,7 +3774,10 @@
                     }
                 }
 
-                await guardarYSincronizar();
+                db.guardarLocal();
+                if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                    db.sincronizarConNube();
+                }
 
                 setTimeout(() => {
                     cerrarModalUsuario();
@@ -3650,7 +3796,8 @@
 
         async function eliminarUsuario(id) {
             try {
-                const usuario = db.usuarios.find(u => u.id == id);
+                const usuarios = db.getUsuarios();
+                const usuario = usuarios.find(u => u.id == id);
                 if (!usuario) {
                     mostrarToast('Usuario no encontrado', 'error');
                     return;
@@ -3663,10 +3810,13 @@
 
                 if (!confirm(`¿Estás seguro de eliminar al usuario "${usuario.nombre}"?`)) return;
 
-                const index = db.usuarios.findIndex(u => u.id == id);
+                const index = db.data.usuarios.findIndex(u => u.id == id);
                 if (index > -1) {
-                    db.usuarios.splice(index, 1);
-                    await guardarYSincronizar();
+                    db.data.usuarios.splice(index, 1);
+                    db.guardarLocal();
+                    if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
+                        db.sincronizarConNube();
+                    }
                     cargarUsuarios();
                     mostrarToast('✅ Usuario eliminado exitosamente', 'success');
                 }
@@ -3679,7 +3829,8 @@
 
         async function editarUsuario(id) {
             try {
-                const usuario = db.usuarios.find(u => u.id == id);
+                const usuarios = db.getUsuarios();
+                const usuario = usuarios.find(u => u.id == id);
                 if (usuario) {
                     abrirModalUsuario(usuario);
                 }
@@ -3696,13 +3847,15 @@
         document.addEventListener('DOMContentLoaded', function() {
             mostrarPantalla('welcomeScreen');
 
+            // Cargar datos
+            db.cargarLocal();
+
             const session = localStorage.getItem('session_active');
             const role = localStorage.getItem('user_role') || 'lavador';
             const userId = localStorage.getItem('user_id');
 
             if (session === 'true' && userId) {
-                cargarDatosLocales();
-                const usuario = db.usuarios.find(u => u.id == userId);
+                const usuario = db.getUsuarios().find(u => u.id == userId);
                 if (usuario && usuario.estado === 'activo') {
                     usuarioActual = usuario;
                     iniciarApp(role, usuario);
@@ -3732,13 +3885,36 @@
             if (event.target === modalSync) cerrarModalSyncConfig();
         });
 
-        console.log('🔐 AndyWash v7.0 - Versión Corregida');
+        console.log('🔐 AndyWash v8.0 - Versión Reestructurada');
+        console.log('📦 Datos en memoria:', db.getMotos().length, 'motos,', db.getOrdenes().length, 'órdenes');
         console.log('📡 Configuración:', CONFIG.binId ? '✅ Configurado' : '⚠️ No configurado');
-        console.log('📦 Datos en memoria:', db.motos.length, 'motos,', db.ordenes.length, 'órdenes');
 
-        // Verificar que la función registrarIngreso está disponible globalmente
-        window.registrarIngreso = registrarIngreso;
-        window.mostrarMensaje = mostrarMensaje;
+        // Exponer funciones globales para el HTML
+        window.cargarTablero = cargarTablero;
+        window.cargarMotosHoy = cargarMotosHoy;
+        window.actualizarContabilidad = actualizarContabilidad;
+        window.sincronizarAhora = sincronizarAhora;
+        window.abrirModalSyncConfig = abrirModalSyncConfig;
+        window.cerrarModalSyncConfig = cerrarModalSyncConfig;
+        window.guardarConfigSync = guardarConfigSync;
+        window.formatearSistema = formatearSistema;
+        window.cambiarSeccionLavador = cambiarSeccionLavador;
+        window.cambiarSeccionAdmin = cambiarSeccionAdmin;
+        window.renderizarLavadorNuevoIngreso = renderizarLavadorNuevoIngreso;
+        window.renderizarLavadorTablero = renderizarLavadorTablero;
+        window.renderizarLavadorMisMotos = renderizarLavadorMisMotos;
+        window.renderizarLavadorSync = renderizarLavadorSync;
+        window.renderizarAdminDashboard = renderizarAdminDashboard;
+        window.renderizarAdminContabilidad = renderizarAdminContabilidad;
+        window.renderizarAdminCaja = renderizarAdminCaja;
+        window.renderizarAdminServicios = renderizarAdminServicios;
+        window.renderizarAdminUsuarios = renderizarAdminUsuarios;
+        window.abrirModalPago = abrirModalPago;
+        window.confirmarEntrega = confirmarEntrega;
+        window.entregarSinPago = entregarSinPago;
+        window.cambiarEstadoMoto = cambiarEstadoMoto;
+        window.eliminarMoto = eliminarMoto;
+        window.mostrarToast = mostrarToast;
     </script>
 
 </body>
