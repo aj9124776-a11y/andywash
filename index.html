@@ -7,7 +7,7 @@
 
     <style>
         /* ================================================================
-           ESTILOS COMPLETOS
+           ESTILOS COMPLETOS - RESPONSIVE
            ================================================================ */
 
         * {
@@ -42,6 +42,7 @@
             color: var(--text);
             min-height: 100vh;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .container {
@@ -94,12 +95,17 @@
             cursor: pointer;
             transition: all 0.3s ease;
             text-align: center;
+            touch-action: manipulation;
         }
 
         .btn-role:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow);
             border-color: var(--primary);
+        }
+
+        .btn-role:active {
+            transform: scale(0.97);
         }
 
         .btn-role .icon {
@@ -166,6 +172,7 @@
             font-family: inherit;
             -webkit-appearance: none;
             appearance: none;
+            background: white;
         }
 
         .form-group input:focus,
@@ -217,6 +224,10 @@
             cursor: pointer;
             font-weight: 500;
             touch-action: manipulation;
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.97);
         }
 
         .btn-success {
@@ -1066,6 +1077,11 @@
             .sidebar-btn .icon {
                 font-size: 0.9rem;
             }
+
+            .sync-log {
+                font-size: 0.7rem;
+                max-height: 180px;
+            }
         }
 
         .hidden {
@@ -1245,7 +1261,7 @@
             </div>
 
             <div style="margin-top: 24px;">
-                <small>Versión 8.0.0 | Sin Token | Sincronización con JSONBin.io</small>
+                <small>Versión 9.0.0 | Multi-dispositivo | Sincronización en tiempo real</small>
             </div>
             <div class="footer-brand">
                 <span class="brand">AndyWash</span> &copy; 2024
@@ -1466,7 +1482,7 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT - REESTRUCTURADO -->
+    <!-- JAVASCRIPT - VERSIÓN MEJORADA PARA MÓVIL -->
     <!-- ============================================================ -->
     <script>
         // ================================================================
@@ -1485,7 +1501,7 @@
         };
 
         // ================================================================
-        // 2. BASE DE DATOS - CLASE
+        // 2. BASE DE DATOS - CLASE MEJORADA PARA MÓVIL
         // ================================================================
 
         class Database {
@@ -1499,6 +1515,7 @@
                     gastos: []
                 };
                 this.cargado = false;
+                this.nombreDB = 'andywash_db_v3';
             }
 
             // Inicializar con datos por defecto
@@ -1528,20 +1545,28 @@
                 return this.data;
             }
 
-            // Cargar desde localStorage
+            // Cargar desde localStorage (con fallback a sessionStorage para móvil)
             cargarLocal() {
                 try {
-                    const stored = localStorage.getItem('andywash_db_v2');
+                    // Intentar primero con localStorage
+                    let stored = localStorage.getItem(this.nombreDB);
+                    if (!stored) {
+                        // Si no está en localStorage, probar sessionStorage
+                        stored = sessionStorage.getItem(this.nombreDB);
+                        console.log('📦 Datos cargados desde sessionStorage (fallback)');
+                    }
+
                     if (stored) {
                         const parsed = JSON.parse(stored);
                         if (parsed && parsed.data) {
                             this.data = parsed.data;
                             this.cargado = true;
-                            console.log('✅ Datos cargados desde localStorage');
+                            console.log('✅ Datos cargados correctamente');
                             console.log('📦 Motos:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
                             return this.data;
                         }
                     }
+                    // Si no hay datos, inicializar por defecto
                     return this.initDefault();
                 } catch (error) {
                     console.error('Error al cargar datos:', error);
@@ -1549,19 +1574,39 @@
                 }
             }
 
-            // Guardar en localStorage
+            // Guardar en localStorage (con fallback a sessionStorage)
             guardarLocal() {
                 try {
-                    localStorage.setItem('andywash_db_v2', JSON.stringify({
+                    const dataToSave = {
                         data: this.data,
                         actualizacion: new Date().toISOString()
-                    }));
-                    console.log('✅ Datos guardados en localStorage');
+                    };
+                    const jsonData = JSON.stringify(dataToSave);
+
+                    // Intentar guardar en localStorage
+                    try {
+                        localStorage.setItem(this.nombreDB, jsonData);
+                        console.log('✅ Datos guardados en localStorage');
+                    } catch (e) {
+                        // Si localStorage falla (espacio insuficiente en móvil)
+                        console.warn('⚠️ localStorage lleno, usando sessionStorage');
+                        sessionStorage.setItem(this.nombreDB, jsonData);
+                    }
+
                     console.log('📦 Motos guardadas:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
                     return true;
                 } catch (error) {
                     console.error('Error al guardar datos:', error);
-                    return false;
+                    // Último recurso: intentar sessionStorage
+                    try {
+                        sessionStorage.setItem(this.nombreDB, JSON.stringify({ data: this.data, actualizacion: new Date()
+                                .toISOString() }));
+                        console.log('✅ Datos guardados en sessionStorage (emergencia)');
+                        return true;
+                    } catch (e) {
+                        console.error('❌ Error crítico al guardar datos:', e);
+                        return false;
+                    }
                 }
             }
 
@@ -1622,7 +1667,6 @@
                 const index = this.data.motos.findIndex(m => m.id === motoId);
                 if (index !== -1) {
                     this.data.motos.splice(index, 1);
-                    // Eliminar órdenes asociadas
                     this.data.ordenes = this.data.ordenes.filter(o => o.motoId !== motoId);
                     this.guardarLocal();
                     return true;
@@ -1657,16 +1701,13 @@
                         headers: { 'X-Master-Key': CONFIG.apiKey }
                     });
 
-                    let datosLocales = this.data;
-                    let fechaLocal = localStorage.getItem('andywash_db_v2_actualizacion') || '';
-
                     if (readResponse.ok) {
                         const data = await readResponse.json();
                         if (data.record && data.record.data) {
                             const fechaRemota = data.record.actualizacion || '';
+                            const fechaLocal = localStorage.getItem(this.nombreDB + '_actualizacion') || '';
 
                             if (fechaRemota > fechaLocal) {
-                                // Los datos remotos son más recientes
                                 this.data = data.record.data;
                                 this.guardarLocal();
                                 console.log('✅ Datos sincronizados desde la nube');
@@ -1678,7 +1719,7 @@
                         }
                     }
 
-                    // Subir datos locales (son más recientes o no hay datos remotos)
+                    // Subir datos locales
                     const dataToSave = {
                         data: this.data,
                         actualizacion: new Date().toISOString()
@@ -1694,7 +1735,7 @@
                     });
 
                     if (putResponse.ok) {
-                        localStorage.setItem('andywash_db_v2_actualizacion', dataToSave.actualizacion);
+                        localStorage.setItem(this.nombreDB + '_actualizacion', dataToSave.actualizacion);
                         console.log('✅ Datos subidos a JSONBin');
                         mostrarToast('📤 Datos sincronizados en la nube', 'success');
                         if (syncIndicator) syncIndicator.textContent = '☁️';
@@ -1802,7 +1843,6 @@
             btn.disabled = true;
 
             try {
-                // Cargar datos
                 db.cargarLocal();
 
                 const usuarios = db.getUsuarios();
@@ -1866,25 +1906,36 @@
 
                 verificarEstadoConexion();
 
-                // Cargar configuración de sincronización
                 cargarConfigSync();
 
-                // Si no hay configuración, usar la predeterminada
                 if (!CONFIG.binId || !CONFIG.apiKey) {
                     CONFIG.binId = CONFIG_PREDETERMINADO.binId;
                     CONFIG.apiKey = CONFIG_PREDETERMINADO.apiKey;
                     guardarConfigSync(CONFIG.binId, CONFIG.apiKey);
                 }
 
-                // Cargar datos desde localStorage
                 db.cargarLocal();
 
-                // Sincronizar con JSONBin (sin bloquear)
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                    db.sincronizarConNube();
+                    // Sincronizar sin esperar (para no bloquear UI)
+                    setTimeout(() => {
+                        db.sincronizarConNube().then(() => {
+                            // Recargar UI después de sincronizar
+                            const seccionActiva = document.querySelector('.section.active');
+                            if (seccionActiva) {
+                                const id = seccionActiva.id;
+                                if (id === 'tablero') cargarTablero();
+                                else if (id === 'mis-motos') cargarMotosHoy();
+                                else if (id === 'dashboard') renderizarAdminDashboard();
+                                else if (id === 'contabilidad') actualizarContabilidad();
+                                else if (id === 'caja') cargarResumenCajaAdmin();
+                                else if (id === 'servicios') cargarServiciosAdmin();
+                                else if (id === 'usuarios') cargarUsuarios();
+                            }
+                        });
+                    }, 1000);
                 }
 
-                // Renderizar según rol
                 if (rol === 'admin') {
                     renderizarSidebarAdmin();
                     renderizarAdminDashboard();
@@ -2086,7 +2137,7 @@
         }
 
         // ================================================================
-        // 12. LAVADOR - NUEVO INGRESO (CORREGIDO)
+        // 12. LAVADOR - NUEVO INGRESO (CORREGIDO PARA MÓVIL)
         // ================================================================
 
         async function renderizarLavadorNuevoIngreso() {
@@ -2102,7 +2153,7 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Placa *</label>
-                                <input type="text" id="placa" required placeholder="ABC-123" />
+                                <input type="text" id="placa" required placeholder="ABC-123" autocomplete="off" />
                             </div>
                             <div class="form-group">
                                 <label>Tipo de Moto</label>
@@ -2134,7 +2185,7 @@
                                 <textarea id="observacion" rows="2" placeholder="Observaciones adicionales..."></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="btn-primary">✅ Registrar Ingreso</button>
+                        <button type="submit" class="btn-primary" id="btnRegistrar">✅ Registrar Ingreso</button>
                     </form>
                     <div id="ingresoMensaje" class="mensaje"></div>
                 </section>
@@ -2142,22 +2193,38 @@
         }
 
         // ================================================================
-        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA (GLOBAL)
+        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA (CON VERIFICACIONES)
         // ================================================================
 
         window.registrarIngreso = async function(event) {
-            if (event) event.preventDefault();
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
 
             console.log('📝 Ejecutando registrarIngreso...');
 
-            const placa = document.getElementById('placa').value.toUpperCase().trim();
-            const tipo = document.getElementById('tipo').value;
-            const servicioId = parseInt(document.getElementById('servicio').value);
-            const metodoPago = document.getElementById('metodoPagoInicial').value;
-            const observacion = document.getElementById('observacion').value.trim();
+            const placaInput = document.getElementById('placa');
+            const tipoSelect = document.getElementById('tipo');
+            const servicioSelect = document.getElementById('servicio');
+            const metodoPagoSelect = document.getElementById('metodoPagoInicial');
+            const observacionText = document.getElementById('observacion');
+
+            // Verificar que todos los elementos existen
+            if (!placaInput || !tipoSelect || !servicioSelect || !metodoPagoSelect) {
+                mostrarMensaje('❌ Error: Elementos del formulario no encontrados', 'error');
+                return false;
+            }
+
+            const placa = placaInput.value.toUpperCase().trim();
+            const tipo = tipoSelect.value;
+            const servicioId = parseInt(servicioSelect.value);
+            const metodoPago = metodoPagoSelect.value;
+            const observacion = observacionText ? observacionText.value.trim() : '';
 
             if (!placa) {
                 mostrarMensaje('❌ La placa es obligatoria', 'error');
+                placaInput.focus();
                 return false;
             }
 
@@ -2203,8 +2270,13 @@
                 console.log('📝 Orden registrada:', orden);
                 console.log('📦 Total motos:', db.getMotos().length);
 
+                // Mostrar mensaje de éxito
                 mostrarMensaje(`✅ Moto ${placa} registrada exitosamente`, 'success');
-                document.getElementById('ingresoForm').reset();
+
+                // Limpiar formulario
+                placaInput.value = '';
+                if (observacionText) observacionText.value = '';
+                placaInput.focus();
 
                 // Actualizar contador en sync
                 const datosStatus = document.getElementById('datosStatus');
@@ -2214,13 +2286,17 @@
 
                 // Sincronizar en segundo plano
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                    db.sincronizarConNube();
+                    setTimeout(() => {
+                        db.sincronizarConNube();
+                    }, 500);
                 }
 
                 // Actualizar tablero si está visible
                 const tableroLista = document.getElementById('tableroLista');
                 if (tableroLista) {
-                    cargarTablero();
+                    setTimeout(() => {
+                        cargarTablero();
+                    }, 300);
                 }
 
                 return true;
@@ -2244,7 +2320,7 @@
         }
 
         // ================================================================
-        // 14. LAVADOR - TABLERO (CORREGIDO)
+        // 14. LAVADOR - TABLERO
         // ================================================================
 
         async function renderizarLavadorTablero() {
@@ -2401,7 +2477,6 @@
                         const usuarios = db.getUsuarios();
                         const adminUser = usuarios.find(u => u.username === 'admin');
 
-                        // Reiniciar datos
                         db.data.motos = [];
                         db.data.ordenes = [];
                         db.data.salarios = [];
@@ -2410,7 +2485,6 @@
                         db.data.servicios = servicios;
                         db.guardarLocal();
 
-                        // Sincronizar
                         if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
                             await db.sincronizarConNube();
                         }
@@ -2531,7 +2605,6 @@
                     `✅ ${moto.placa} entregada - Pago: ${metodoPagoSeleccionado} $${(orden?.precioAplicado || moto.precioAplicado || 0).toLocaleString()}`;
                 mostrarToast(msg, 'success');
 
-                // Sincronizar
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
                     db.sincronizarConNube();
                 }
@@ -2848,7 +2921,7 @@
         }
 
         // ================================================================
-        // 23. ADMIN - CONTABILIDAD (VERSIÓN SIMPLIFICADA)
+        // 23. ADMIN - CONTABILIDAD
         // ================================================================
 
         async function renderizarAdminContabilidad() {
@@ -2931,7 +3004,7 @@
         }
 
         // ================================================================
-        // 24. FUNCIONES CONTABILIDAD (Simplificadas)
+        // 24. FUNCIONES CONTABILIDAD
         // ================================================================
 
         function cambiarPestanaCont(pestana, btn) {
@@ -3885,7 +3958,7 @@
             if (event.target === modalSync) cerrarModalSyncConfig();
         });
 
-        console.log('🔐 AndyWash v8.0 - Versión Reestructurada');
+        console.log('🔐 AndyWash v9.0 - Versión Mejorada para Móvil');
         console.log('📦 Datos en memoria:', db.getMotos().length, 'motos,', db.getOrdenes().length, 'órdenes');
         console.log('📡 Configuración:', CONFIG.binId ? '✅ Configurado' : '⚠️ No configurado');
 
@@ -3915,6 +3988,7 @@
         window.cambiarEstadoMoto = cambiarEstadoMoto;
         window.eliminarMoto = eliminarMoto;
         window.mostrarToast = mostrarToast;
+        window.registrarIngreso = window.registrarIngreso;
     </script>
 
 </body>
