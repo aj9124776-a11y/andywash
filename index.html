@@ -1261,7 +1261,7 @@
             </div>
 
             <div style="margin-top: 24px;">
-                <small>Versión 9.0.0 | Multi-dispositivo | Sincronización en tiempo real</small>
+                <small>Versión 10.0.0 | Multi-dispositivo | Sincronización en tiempo real</small>
             </div>
             <div class="footer-brand">
                 <span class="brand">AndyWash</span> &copy; 2024
@@ -1482,7 +1482,7 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT - VERSIÓN MEJORADA PARA MÓVIL -->
+    <!-- JAVASCRIPT - VERSIÓN 10.0 CORREGIDA -->
     <!-- ============================================================ -->
     <script>
         // ================================================================
@@ -1501,7 +1501,7 @@
         };
 
         // ================================================================
-        // 2. BASE DE DATOS - CLASE MEJORADA PARA MÓVIL
+        // 2. BASE DE DATOS - CLASE MEJORADA
         // ================================================================
 
         class Database {
@@ -1515,7 +1515,8 @@
                     gastos: []
                 };
                 this.cargado = false;
-                this.nombreDB = 'andywash_db_v3';
+                this.nombreDB = 'andywash_db_v10';
+                this.cargarLocal();
             }
 
             // Inicializar con datos por defecto
@@ -1545,15 +1546,15 @@
                 return this.data;
             }
 
-            // Cargar desde localStorage (con fallback a sessionStorage para móvil)
+            // Cargar desde localStorage
             cargarLocal() {
                 try {
-                    // Intentar primero con localStorage
+                    // Intentar con localStorage
                     let stored = localStorage.getItem(this.nombreDB);
                     if (!stored) {
-                        // Si no está en localStorage, probar sessionStorage
+                        // Fallback a sessionStorage
                         stored = sessionStorage.getItem(this.nombreDB);
-                        console.log('📦 Datos cargados desde sessionStorage (fallback)');
+                        if (stored) console.log('📦 Datos cargados desde sessionStorage (fallback)');
                     }
 
                     if (stored) {
@@ -1566,7 +1567,6 @@
                             return this.data;
                         }
                     }
-                    // Si no hay datos, inicializar por defecto
                     return this.initDefault();
                 } catch (error) {
                     console.error('Error al cargar datos:', error);
@@ -1574,7 +1574,7 @@
                 }
             }
 
-            // Guardar en localStorage (con fallback a sessionStorage)
+            // Guardar en localStorage
             guardarLocal() {
                 try {
                     const dataToSave = {
@@ -1586,22 +1586,19 @@
                     // Intentar guardar en localStorage
                     try {
                         localStorage.setItem(this.nombreDB, jsonData);
-                        console.log('✅ Datos guardados en localStorage');
                     } catch (e) {
-                        // Si localStorage falla (espacio insuficiente en móvil)
                         console.warn('⚠️ localStorage lleno, usando sessionStorage');
                         sessionStorage.setItem(this.nombreDB, jsonData);
                     }
 
+                    console.log('✅ Datos guardados');
                     console.log('📦 Motos guardadas:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
                     return true;
                 } catch (error) {
                     console.error('Error al guardar datos:', error);
-                    // Último recurso: intentar sessionStorage
                     try {
                         sessionStorage.setItem(this.nombreDB, JSON.stringify({ data: this.data, actualizacion: new Date()
                                 .toISOString() }));
-                        console.log('✅ Datos guardados en sessionStorage (emergencia)');
                         return true;
                     } catch (e) {
                         console.error('❌ Error crítico al guardar datos:', e);
@@ -1615,39 +1612,44 @@
                 return this.data;
             }
 
-            // Obtener motos
             getMotos() {
                 return this.data.motos || [];
             }
 
-            // Obtener órdenes
             getOrdenes() {
                 return this.data.ordenes || [];
             }
 
-            // Obtener servicios
             getServicios() {
                 return this.data.servicios || [];
             }
 
-            // Obtener usuarios
             getUsuarios() {
                 return this.data.usuarios || [];
             }
 
-            // Agregar moto
+            // Agregar moto - FUNCIÓN CORREGIDA
             agregarMoto(moto) {
+                if (!moto || !moto.placa) {
+                    console.error('❌ Moto inválida:', moto);
+                    return null;
+                }
                 this.data.motos.push(moto);
                 this.guardarLocal();
-                console.log('✅ Moto agregada:', moto);
+                console.log('✅ Moto agregada:', moto.placa);
+                console.log('📦 Total motos:', this.data.motos.length);
                 return moto;
             }
 
             // Agregar orden
             agregarOrden(orden) {
+                if (!orden || !orden.motoId) {
+                    console.error('❌ Orden inválida:', orden);
+                    return null;
+                }
                 this.data.ordenes.push(orden);
                 this.guardarLocal();
-                console.log('✅ Orden agregada:', orden);
+                console.log('✅ Orden agregada para moto ID:', orden.motoId);
                 return orden;
             }
 
@@ -1696,7 +1698,6 @@
                 if (syncIndicator) syncIndicator.textContent = '⏳';
 
                 try {
-                    // Leer datos remotos
                     const readResponse = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
                         headers: { 'X-Master-Key': CONFIG.apiKey }
                     });
@@ -1719,7 +1720,6 @@
                         }
                     }
 
-                    // Subir datos locales
                     const dataToSave = {
                         data: this.data,
                         actualizacion: new Date().toISOString()
@@ -1761,7 +1761,7 @@
         }
 
         // ================================================================
-        // 3. INSTANCIA GLOBAL DE LA BASE DE DATOS
+        // 3. INSTANCIA GLOBAL
         // ================================================================
 
         const db = new Database();
@@ -1843,8 +1843,6 @@
             btn.disabled = true;
 
             try {
-                db.cargarLocal();
-
                 const usuarios = db.getUsuarios();
                 const usuario = usuarios.find(u =>
                     u.pin === pin &&
@@ -1906,6 +1904,7 @@
 
                 verificarEstadoConexion();
 
+                // Cargar configuración
                 cargarConfigSync();
 
                 if (!CONFIG.binId || !CONFIG.apiKey) {
@@ -1914,28 +1913,16 @@
                     guardarConfigSync(CONFIG.binId, CONFIG.apiKey);
                 }
 
-                db.cargarLocal();
-
+                // Sincronizar en segundo plano
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
-                    // Sincronizar sin esperar (para no bloquear UI)
                     setTimeout(() => {
                         db.sincronizarConNube().then(() => {
-                            // Recargar UI después de sincronizar
-                            const seccionActiva = document.querySelector('.section.active');
-                            if (seccionActiva) {
-                                const id = seccionActiva.id;
-                                if (id === 'tablero') cargarTablero();
-                                else if (id === 'mis-motos') cargarMotosHoy();
-                                else if (id === 'dashboard') renderizarAdminDashboard();
-                                else if (id === 'contabilidad') actualizarContabilidad();
-                                else if (id === 'caja') cargarResumenCajaAdmin();
-                                else if (id === 'servicios') cargarServiciosAdmin();
-                                else if (id === 'usuarios') cargarUsuarios();
-                            }
+                            actualizarUI();
                         });
                     }, 1000);
                 }
 
+                // Renderizar según rol
                 if (rol === 'admin') {
                     renderizarSidebarAdmin();
                     renderizarAdminDashboard();
@@ -2137,7 +2124,7 @@
         }
 
         // ================================================================
-        // 12. LAVADOR - NUEVO INGRESO (CORREGIDO PARA MÓVIL)
+        // 12. LAVADOR - NUEVO INGRESO
         // ================================================================
 
         async function renderizarLavadorNuevoIngreso() {
@@ -2193,7 +2180,7 @@
         }
 
         // ================================================================
-        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA (CON VERIFICACIONES)
+        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA
         // ================================================================
 
         window.registrarIngreso = async function(event) {
@@ -2210,7 +2197,6 @@
             const metodoPagoSelect = document.getElementById('metodoPagoInicial');
             const observacionText = document.getElementById('observacion');
 
-            // Verificar que todos los elementos existen
             if (!placaInput || !tipoSelect || !servicioSelect || !metodoPagoSelect) {
                 mostrarMensaje('❌ Error: Elementos del formulario no encontrados', 'error');
                 return false;
@@ -2237,7 +2223,6 @@
                     return false;
                 }
 
-                // Crear ID único
                 const nuevoId = Date.now() + Math.floor(Math.random() * 1000);
 
                 const moto = {
@@ -2266,25 +2251,20 @@
                 db.agregarMoto(moto);
                 db.agregarOrden(orden);
 
-                console.log('📝 Moto registrada:', moto);
-                console.log('📝 Orden registrada:', orden);
+                console.log('📝 Moto registrada:', moto.placa);
                 console.log('📦 Total motos:', db.getMotos().length);
 
-                // Mostrar mensaje de éxito
                 mostrarMensaje(`✅ Moto ${placa} registrada exitosamente`, 'success');
 
-                // Limpiar formulario
                 placaInput.value = '';
                 if (observacionText) observacionText.value = '';
                 placaInput.focus();
 
-                // Actualizar contador en sync
                 const datosStatus = document.getElementById('datosStatus');
                 if (datosStatus) {
                     datosStatus.textContent = `${db.getMotos().length} motos, ${db.getOrdenes().length} órdenes`;
                 }
 
-                // Sincronizar en segundo plano
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
                     setTimeout(() => {
                         db.sincronizarConNube();
@@ -3958,7 +3938,7 @@
             if (event.target === modalSync) cerrarModalSyncConfig();
         });
 
-        console.log('🔐 AndyWash v9.0 - Versión Mejorada para Móvil');
+        console.log('🔐 AndyWash v10.0 - Versión Corregida');
         console.log('📦 Datos en memoria:', db.getMotos().length, 'motos,', db.getOrdenes().length, 'órdenes');
         console.log('📡 Configuración:', CONFIG.binId ? '✅ Configurado' : '⚠️ No configurado');
 
