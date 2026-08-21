@@ -1261,7 +1261,7 @@
             </div>
 
             <div style="margin-top: 24px;">
-                <small>Versión 10.0.0 | Multi-dispositivo | Sincronización en tiempo real</small>
+                <small>Versión 11.0.0 | Multi-dispositivo | Sincronización en tiempo real</small>
             </div>
             <div class="footer-brand">
                 <span class="brand">AndyWash</span> &copy; 2024
@@ -1482,7 +1482,7 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT - VERSIÓN 10.0 CORREGIDA -->
+    <!-- JAVASCRIPT - VERSIÓN 11.0 CORREGIDA -->
     <!-- ============================================================ -->
     <script>
         // ================================================================
@@ -1501,7 +1501,7 @@
         };
 
         // ================================================================
-        // 2. BASE DE DATOS - CLASE MEJORADA
+        // 2. BASE DE DATOS - CLASE CORREGIDA
         // ================================================================
 
         class Database {
@@ -1515,7 +1515,8 @@
                     gastos: []
                 };
                 this.cargado = false;
-                this.nombreDB = 'andywash_db_v10';
+                this.nombreDB = 'andywash_db_v11';
+                // Cargar datos al instanciar
                 this.cargarLocal();
             }
 
@@ -1543,16 +1544,15 @@
                 this.cargado = true;
                 this.guardarLocal();
                 console.log('📦 Datos por defecto inicializados');
+                console.log('👤 Usuarios:', this.data.usuarios.length);
                 return this.data;
             }
 
             // Cargar desde localStorage
             cargarLocal() {
                 try {
-                    // Intentar con localStorage
                     let stored = localStorage.getItem(this.nombreDB);
                     if (!stored) {
-                        // Fallback a sessionStorage
                         stored = sessionStorage.getItem(this.nombreDB);
                         if (stored) console.log('📦 Datos cargados desde sessionStorage (fallback)');
                     }
@@ -1564,6 +1564,7 @@
                             this.cargado = true;
                             console.log('✅ Datos cargados correctamente');
                             console.log('📦 Motos:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
+                            console.log('👤 Usuarios:', this.data.usuarios.length);
                             return this.data;
                         }
                     }
@@ -1583,7 +1584,6 @@
                     };
                     const jsonData = JSON.stringify(dataToSave);
 
-                    // Intentar guardar en localStorage
                     try {
                         localStorage.setItem(this.nombreDB, jsonData);
                     } catch (e) {
@@ -1628,7 +1628,7 @@
                 return this.data.usuarios || [];
             }
 
-            // Agregar moto - FUNCIÓN CORREGIDA
+            // Agregar moto
             agregarMoto(moto) {
                 if (!moto || !moto.placa) {
                     console.error('❌ Moto inválida:', moto);
@@ -1651,6 +1651,18 @@
                 this.guardarLocal();
                 console.log('✅ Orden agregada para moto ID:', orden.motoId);
                 return orden;
+            }
+
+            // Agregar usuario
+            agregarUsuario(usuario) {
+                if (!usuario || !usuario.username) {
+                    console.error('❌ Usuario inválido:', usuario);
+                    return null;
+                }
+                this.data.usuarios.push(usuario);
+                this.guardarLocal();
+                console.log('✅ Usuario agregado:', usuario.username);
+                return usuario;
             }
 
             // Actualizar moto
@@ -1829,11 +1841,12 @@
         }
 
         // ================================================================
-        // 6. LOGIN
+        // 6. LOGIN - CORREGIDO
         // ================================================================
 
         async function handleLogin(event) {
             event.preventDefault();
+
             const pin = document.getElementById('loginPin').value;
             const role = localStorage.getItem('user_role') || 'lavador';
 
@@ -1843,7 +1856,13 @@
             btn.disabled = true;
 
             try {
+                // Asegurar que los datos estén cargados
+                db.cargarLocal();
+
                 const usuarios = db.getUsuarios();
+                console.log('🔍 Verificando usuario...');
+                console.log('👤 Usuarios disponibles:', usuarios.length);
+
                 const usuario = usuarios.find(u =>
                     u.pin === pin &&
                     u.rol === role &&
@@ -1851,12 +1870,14 @@
                 );
 
                 if (usuario) {
+                    console.log('✅ Usuario encontrado:', usuario.username);
                     usuarioActual = usuario;
                     localStorage.setItem('session_active', 'true');
                     localStorage.setItem('user_id', usuario.id);
                     localStorage.setItem('user_name', usuario.nombre);
                     await iniciarApp(role, usuario);
                 } else {
+                    console.log('❌ Usuario no encontrado');
                     const loginError = document.getElementById('loginError');
                     if (loginError) {
                         loginError.textContent = '❌ PIN incorrecto o usuario inactivo. Intenta de nuevo.';
@@ -1875,7 +1896,7 @@
         }
 
         // ================================================================
-        // 7. INICIAR APLICACIÓN
+        // 7. INICIAR APLICACIÓN - CORREGIDO
         // ================================================================
 
         async function iniciarApp(rol, usuario) {
@@ -1904,13 +1925,23 @@
 
                 verificarEstadoConexion();
 
-                // Cargar configuración
+                // Cargar configuración de sincronización
                 cargarConfigSync();
 
+                // Si no hay configuración, usar la predeterminada (sin llamar a guardarConfigSync con evento)
                 if (!CONFIG.binId || !CONFIG.apiKey) {
                     CONFIG.binId = CONFIG_PREDETERMINADO.binId;
                     CONFIG.apiKey = CONFIG_PREDETERMINADO.apiKey;
-                    guardarConfigSync(CONFIG.binId, CONFIG.apiKey);
+                    // Guardar configuración directamente sin evento
+                    try {
+                        localStorage.setItem('andywash_sync_config', JSON.stringify({
+                            binId: CONFIG.binId,
+                            apiKey: CONFIG.apiKey
+                        }));
+                        console.log('✅ Configuración de sync guardada automáticamente');
+                    } catch (e) {
+                        console.error('Error al guardar configuración:', e);
+                    }
                 }
 
                 // Sincronizar en segundo plano
@@ -1994,19 +2025,6 @@
             }
         }
 
-        function guardarConfigSync(binId, apiKey) {
-            try {
-                localStorage.setItem('andywash_sync_config', JSON.stringify({ binId, apiKey }));
-                CONFIG.binId = binId;
-                CONFIG.apiKey = apiKey;
-                console.log('✅ Configuración de sync guardada');
-                return true;
-            } catch (error) {
-                console.error('Error al guardar configuración:', error);
-                return false;
-            }
-        }
-
         // ================================================================
         // 9. ACTUALIZAR UI
         // ================================================================
@@ -2040,8 +2058,21 @@
         }
 
         async function guardarConfigSync(event) {
+            // Si no hay evento o no es un evento de formulario, guardar directamente
             if (!event || typeof event.preventDefault !== 'function') {
-                console.log('⚠️ guardarConfigSync llamado sin evento, ignorando');
+                console.log('⚠️ guardarConfigSync llamado sin evento, guardando directamente');
+                try {
+                    const binId = document.getElementById('syncBinId')?.value || CONFIG.binId;
+                    const apiKey = document.getElementById('syncApiKey')?.value || CONFIG.apiKey;
+                    if (binId && apiKey) {
+                        localStorage.setItem('andywash_sync_config', JSON.stringify({ binId, apiKey }));
+                        CONFIG.binId = binId;
+                        CONFIG.apiKey = apiKey;
+                        console.log('✅ Configuración guardada directamente');
+                    }
+                } catch (e) {
+                    console.error('Error al guardar configuración:', e);
+                }
                 return;
             }
 
@@ -2064,7 +2095,9 @@
                 });
 
                 if (testResponse.ok || testResponse.status === 404) {
-                    guardarConfigSync(binId, apiKey);
+                    localStorage.setItem('andywash_sync_config', JSON.stringify({ binId, apiKey }));
+                    CONFIG.binId = binId;
+                    CONFIG.apiKey = apiKey;
                     msgEl.textContent = '✅ Configuración guardada exitosamente';
                     msgEl.className = 'mensaje success';
                     msgEl.style.display = 'block';
@@ -2180,7 +2213,7 @@
         }
 
         // ================================================================
-        // 13. REGISTRAR INGRESO - FUNCIÓN CORREGIDA
+        // 13. REGISTRAR INGRESO
         // ================================================================
 
         window.registrarIngreso = async function(event) {
@@ -2247,7 +2280,6 @@
                     usuarioCreador: usuarioActual ? usuarioActual.id : null
                 };
 
-                // Agregar a la base de datos
                 db.agregarMoto(moto);
                 db.agregarOrden(orden);
 
@@ -2271,7 +2303,6 @@
                     }, 500);
                 }
 
-                // Actualizar tablero si está visible
                 const tableroLista = document.getElementById('tableroLista');
                 if (tableroLista) {
                     setTimeout(() => {
@@ -3938,8 +3969,9 @@
             if (event.target === modalSync) cerrarModalSyncConfig();
         });
 
-        console.log('🔐 AndyWash v10.0 - Versión Corregida');
+        console.log('🔐 AndyWash v11.0 - Versión Corregida');
         console.log('📦 Datos en memoria:', db.getMotos().length, 'motos,', db.getOrdenes().length, 'órdenes');
+        console.log('👤 Usuarios:', db.getUsuarios().length);
         console.log('📡 Configuración:', CONFIG.binId ? '✅ Configurado' : '⚠️ No configurado');
 
         // Exponer funciones globales para el HTML
