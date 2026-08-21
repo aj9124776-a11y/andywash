@@ -1261,10 +1261,10 @@
             </div>
 
             <div style="margin-top: 24px;">
-                <small>Versión 11.0.0 | Multi-dispositivo | Sincronización en tiempo real</small>
+                <small>Versión 12.0.0 | FINAL - Estable y Funcional</small>
             </div>
             <div class="footer-brand">
-                <span class="brand">AndyWash</span> &copy; 2024
+                <span class="brand">AndyWash</span> &copy; 2024 - Todos los derechos reservados
             </div>
         </div>
     </div>
@@ -1482,7 +1482,7 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT - VERSIÓN 11.0 CORREGIDA -->
+    <!-- JAVASCRIPT - VERSIÓN 12.0 FINAL -->
     <!-- ============================================================ -->
     <script>
         // ================================================================
@@ -1501,11 +1501,12 @@
         };
 
         // ================================================================
-        // 2. BASE DE DATOS - CLASE CORREGIDA
+        // 2. BASE DE DATOS - CLASE FINAL
         // ================================================================
 
         class Database {
             constructor() {
+                this.nombreDB = 'andywash_db_v12';
                 this.data = {
                     motos: [],
                     ordenes: [],
@@ -1515,12 +1516,11 @@
                     gastos: []
                 };
                 this.cargado = false;
-                this.nombreDB = 'andywash_db_v11';
                 // Cargar datos al instanciar
                 this.cargarLocal();
             }
 
-            // Inicializar con datos por defecto
+            // Inicializar con datos por defecto (SIEMPRE asegura que existan admin y lavador)
             initDefault() {
                 this.data = {
                     motos: [],
@@ -1543,8 +1543,8 @@
                 };
                 this.cargado = true;
                 this.guardarLocal();
-                console.log('📦 Datos por defecto inicializados');
-                console.log('👤 Usuarios:', this.data.usuarios.length);
+                console.log('📦 Datos por defecto inicializados (admin y lavador creados)');
+                console.log('👤 Usuarios:', this.data.usuarios.map(u => u.username).join(', '));
                 return this.data;
             }
 
@@ -1565,6 +1565,8 @@
                             console.log('✅ Datos cargados correctamente');
                             console.log('📦 Motos:', this.data.motos.length, 'Órdenes:', this.data.ordenes.length);
                             console.log('👤 Usuarios:', this.data.usuarios.length);
+                            // Verificar que los usuarios por defecto existen, si no, agregarlos
+                            this.verificarUsuariosPorDefecto();
                             return this.data;
                         }
                     }
@@ -1572,6 +1574,47 @@
                 } catch (error) {
                     console.error('Error al cargar datos:', error);
                     return this.initDefault();
+                }
+            }
+
+            // Asegurar que admin y lavador existan
+            verificarUsuariosPorDefecto() {
+                const usuarios = this.data.usuarios;
+                let modificado = false;
+
+                const adminExist = usuarios.find(u => u.username === 'admin');
+                if (!adminExist) {
+                    usuarios.push({
+                        id: Date.now() + 1,
+                        username: 'admin',
+                        nombre: 'Administrador',
+                        pin: '5678',
+                        rol: 'admin',
+                        estado: 'activo',
+                        fechaCreacion: new Date().toISOString()
+                    });
+                    modificado = true;
+                    console.log('🔄 Usuario admin agregado');
+                }
+
+                const lavadorExist = usuarios.find(u => u.username === 'lavador');
+                if (!lavadorExist) {
+                    usuarios.push({
+                        id: Date.now() + 2,
+                        username: 'lavador',
+                        nombre: 'Lavador Principal',
+                        pin: '1234',
+                        rol: 'lavador',
+                        estado: 'activo',
+                        fechaCreacion: new Date().toISOString()
+                    });
+                    modificado = true;
+                    console.log('🔄 Usuario lavador agregado');
+                }
+
+                if (modificado) {
+                    this.guardarLocal();
+                    console.log('✅ Usuarios por defecto verificados y corregidos');
                 }
             }
 
@@ -1659,9 +1702,16 @@
                     console.error('❌ Usuario inválido:', usuario);
                     return null;
                 }
+                // Verificar si ya existe
+                const existe = this.data.usuarios.find(u => u.username === usuario.username);
+                if (existe) {
+                    console.warn('⚠️ El usuario ya existe:', usuario.username);
+                    return null;
+                }
                 this.data.usuarios.push(usuario);
                 this.guardarLocal();
                 console.log('✅ Usuario agregado:', usuario.username);
+                console.log('👤 Total usuarios:', this.data.usuarios.length);
                 return usuario;
             }
 
@@ -1856,12 +1906,12 @@
             btn.disabled = true;
 
             try {
-                // Asegurar que los datos estén cargados
+                // Asegurar datos cargados
                 db.cargarLocal();
 
                 const usuarios = db.getUsuarios();
                 console.log('🔍 Verificando usuario...');
-                console.log('👤 Usuarios disponibles:', usuarios.length);
+                console.log('👤 Usuarios disponibles:', usuarios.map(u => u.username).join(', '));
 
                 const usuario = usuarios.find(u =>
                     u.pin === pin &&
@@ -1877,7 +1927,7 @@
                     localStorage.setItem('user_name', usuario.nombre);
                     await iniciarApp(role, usuario);
                 } else {
-                    console.log('❌ Usuario no encontrado');
+                    console.log('❌ Usuario no encontrado con PIN:', pin, 'y rol:', role);
                     const loginError = document.getElementById('loginError');
                     if (loginError) {
                         loginError.textContent = '❌ PIN incorrecto o usuario inactivo. Intenta de nuevo.';
@@ -1932,7 +1982,6 @@
                 if (!CONFIG.binId || !CONFIG.apiKey) {
                     CONFIG.binId = CONFIG_PREDETERMINADO.binId;
                     CONFIG.apiKey = CONFIG_PREDETERMINADO.apiKey;
-                    // Guardar configuración directamente sin evento
                     try {
                         localStorage.setItem('andywash_sync_config', JSON.stringify({
                             binId: CONFIG.binId,
@@ -2485,8 +2534,7 @@
                 async () => {
                     try {
                         const servicios = db.getServicios();
-                        const usuarios = db.getUsuarios();
-                        const adminUser = usuarios.find(u => u.username === 'admin');
+                        const adminUser = db.getUsuarios().find(u => u.username === 'admin');
 
                         db.data.motos = [];
                         db.data.ordenes = [];
@@ -3661,7 +3709,7 @@
         }
 
         // ================================================================
-        // 29. ADMIN - USUARIOS
+        // 29. ADMIN - USUARIOS (CORREGIDO)
         // ================================================================
 
         async function renderizarAdminUsuarios() {
@@ -3689,7 +3737,7 @@
             await cargarUsuarios();
         }
 
-        async function cargarUsuarios() {
+        window.cargarUsuarios = async function() {
             const tbody = document.getElementById('usuariosTablaBody');
             if (!tbody) return;
 
@@ -3715,10 +3763,11 @@
                     </td>
                 </tr>
             `).join('');
-        }
+            console.log('👤 Tabla de usuarios actualizada, total:', usuarios.length);
+        };
 
         // ================================================================
-        // 30. FUNCIONES USUARIOS
+        // 30. FUNCIONES USUARIOS (CORREGIDO)
         // ================================================================
 
         function abrirModalUsuario(usuario = null) {
@@ -3761,7 +3810,7 @@
             if (modal) modal.classList.add('hidden');
         }
 
-        async function guardarUsuario(event) {
+        window.guardarUsuario = async function(event) {
             event.preventDefault();
 
             const id = document.getElementById('usuarioId').value;
@@ -3849,7 +3898,15 @@
                         fechaCreacion: new Date().toISOString()
                     };
 
-                    db.data.usuarios.push(nuevoUsuario);
+                    db.agregarUsuario(nuevoUsuario);
+                    if (!nuevoUsuario) {
+                        if (msgEl) {
+                            msgEl.textContent = '❌ Error al crear usuario (posible duplicado)';
+                            msgEl.className = 'mensaje error';
+                            msgEl.style.display = 'block';
+                        }
+                        return;
+                    }
 
                     if (msgEl) {
                         msgEl.textContent = `✅ Usuario ${username} creado exitosamente`;
@@ -3858,27 +3915,31 @@
                     }
                 }
 
-                db.guardarLocal();
                 if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
                     db.sincronizarConNube();
                 }
 
+                // Recargar la tabla de usuarios
+                setTimeout(() => {
+                    cargarUsuarios();
+                }, 500);
+
+                // Cerrar modal después de un tiempo
                 setTimeout(() => {
                     cerrarModalUsuario();
-                    cargarUsuarios();
                 }, 1500);
 
             } catch (error) {
                 console.error('Error al guardar usuario:', error);
                 if (msgEl) {
-                    msgEl.textContent = '❌ Error al guardar el usuario';
+                    msgEl.textContent = '❌ Error al guardar el usuario: ' + error.message;
                     msgEl.className = 'mensaje error';
                     msgEl.style.display = 'block';
                 }
             }
-        }
+        };
 
-        async function eliminarUsuario(id) {
+        window.eliminarUsuario = async function(id) {
             try {
                 const usuarios = db.getUsuarios();
                 const usuario = usuarios.find(u => u.id == id);
@@ -3901,7 +3962,7 @@
                     if (CONFIG.binId && CONFIG.apiKey && navigator.onLine) {
                         db.sincronizarConNube();
                     }
-                    cargarUsuarios();
+                    await cargarUsuarios();
                     mostrarToast('✅ Usuario eliminado exitosamente', 'success');
                 }
 
@@ -3909,9 +3970,9 @@
                 console.error('Error al eliminar usuario:', error);
                 mostrarToast('❌ Error al eliminar el usuario', 'error');
             }
-        }
+        };
 
-        async function editarUsuario(id) {
+        window.editarUsuario = async function(id) {
             try {
                 const usuarios = db.getUsuarios();
                 const usuario = usuarios.find(u => u.id == id);
@@ -3922,7 +3983,7 @@
                 console.error('Error al cargar usuario:', error);
                 mostrarToast('Error al cargar el usuario', 'error');
             }
-        }
+        };
 
         // ================================================================
         // 31. INICIALIZAR APLICACIÓN
@@ -3969,9 +4030,9 @@
             if (event.target === modalSync) cerrarModalSyncConfig();
         });
 
-        console.log('🔐 AndyWash v11.0 - Versión Corregida');
+        console.log('🔐 AndyWash v12.0 - VERSIÓN FINAL');
         console.log('📦 Datos en memoria:', db.getMotos().length, 'motos,', db.getOrdenes().length, 'órdenes');
-        console.log('👤 Usuarios:', db.getUsuarios().length);
+        console.log('👤 Usuarios:', db.getUsuarios().map(u => u.username).join(', '));
         console.log('📡 Configuración:', CONFIG.binId ? '✅ Configurado' : '⚠️ No configurado');
 
         // Exponer funciones globales para el HTML
@@ -4001,6 +4062,10 @@
         window.eliminarMoto = eliminarMoto;
         window.mostrarToast = mostrarToast;
         window.registrarIngreso = window.registrarIngreso;
+        window.cargarUsuarios = cargarUsuarios;
+        window.guardarUsuario = guardarUsuario;
+        window.editarUsuario = editarUsuario;
+        window.eliminarUsuario = eliminarUsuario;
     </script>
 
 </body>
